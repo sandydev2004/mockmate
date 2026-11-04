@@ -22,8 +22,8 @@ class MockMateStore {
     // Default demo profile for quick testing
     this.profiles.set("demo-user-123", {
       id: "demo-user-123",
-      email: "student@placement.edu.in",
-      full_name: "Rahul Sharma",
+      email: "candidate@placement.edu.in",
+      full_name: "Candidate",
       credits: 2,
       target_role: "SDE",
       target_company_type: "product",
@@ -68,7 +68,7 @@ class MockMateStore {
         "Dry-run with a minimal failure test case before declaring the solution final",
       ],
       summary:
-        "Strong performance overall. Rahul demonstrated solid grasp of hash table indexing and delivered clean, readable solution code with great communication clarity.",
+        "Strong performance overall. The candidate demonstrated solid grasp of hash table indexing and delivered clean, readable solution code with great communication clarity.",
       created_at: new Date(Date.now() - 86400000 * 3).toISOString(),
     });
 
@@ -229,3 +229,4 @@ class MockMateStore {
 const globalForStore = globalThis as unknown as { mockMateStore: MockMateStore };
 export const appStore = globalForStore.mockMateStore || new MockMateStore();
 if (process.env.NODE_ENV !== "production") globalForStore.mockMateStore = appStore;
+

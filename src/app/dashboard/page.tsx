@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { appStore } from "@/lib/store";
 import {
@@ -17,10 +18,15 @@ import { formatDate, getDifficultyBadgeColor, getRoleBadgeColor, getScoreColor }
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  const userId = user?.id || "demo-user-123";
-  const profile = appStore.getProfile(userId);
-  const interviews = appStore.getUserInterviews(userId);
-  const resumes = appStore.getUserResumes(userId);
+
+  // Enforce authentication: Dashboard only opens after signup or login!
+  if (!user) {
+    redirect("/login");
+  }
+
+  const profile = appStore.getProfile(user.id);
+  const interviews = appStore.getUserInterviews(user.id);
+  const resumes = appStore.getUserResumes(user.id);
 
   // Stats calculation
   const completedInterviews = interviews.filter((i) => i.status === "completed" && i.overall_score);
@@ -30,6 +36,8 @@ export default async function DashboardPage() {
           completedInterviews.length
       )
     : null;
+
+  const candidateDisplayName = user.full_name || profile.full_name || "Candidate";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 space-y-8">
@@ -41,7 +49,7 @@ export default async function DashboardPage() {
             <span>Placement Readiness Portal</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Welcome back, {profile.full_name || "Candidate"}!
+            Welcome back, {candidateDisplayName}!
           </h1>
           <p className="text-indigo-100 text-sm max-w-xl">
             You are currently practicing for <span className="font-semibold text-white">SDE roles</span> at <span className="font-semibold text-white">product & service firms</span>.
@@ -54,7 +62,7 @@ export default async function DashboardPage() {
               <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
               <div>
                 <p className="text-[11px] text-indigo-200 uppercase tracking-wider font-medium">Credits</p>
-                <p className="text-lg font-bold leading-none">{profile.credits} Available</p>
+                <p className="text-lg font-bold leading-none">{user.credits} Available</p>
               </div>
             </div>
             <Link
@@ -118,7 +126,7 @@ export default async function DashboardPage() {
             <BarChart3 className="w-4 h-4 text-purple-500" />
           </div>
           <p className="text-2xl sm:text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
-            {completedInterviews.length > 0 ? "Tracking" : "Pending"}
+            {completedInterviews.length > 0 ? "Tracking" : "Ready"}
           </p>
           <Link
             href="/progress"
@@ -199,9 +207,11 @@ export default async function DashboardPage() {
               <PlayCircle className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">No interviews yet</h3>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                Welcome, {candidateDisplayName}! No interviews taken yet.
+              </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                You have 1 free interview credit ready! Configure your target role and company to begin.
+                You have {user.credits} free interview credit loaded! Configure your target role and company to begin your first session.
               </p>
             </div>
             <Link

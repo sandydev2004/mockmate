@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, ArrowRight, Mail, Lock, ShieldCheck, Zap } from "lucide-react";
+import { Sparkles, ArrowRight, Mail, User, ShieldCheck, Zap } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,53 +11,60 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // 1-click instant demo login
-  const handleDemoLogin = async () => {
+  // Sign in / Sign up with Candidate Name & Email
+  const handleAuthSubmit = async (nameToUse?: string, emailToUse?: string) => {
+    const finalName = (nameToUse !== undefined ? nameToUse : fullName).trim();
+    const finalEmail = (emailToUse !== undefined ? emailToUse : email).trim();
+
+    if (!finalName) {
+      setError("Please enter your name to personalize your placement dashboard.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
       const res = await fetch("/api/auth/demo", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: email.trim() || "student@placement.edu.in",
-          name: fullName.trim() || "Rahul Sharma",
+          name: finalName,
+          email: finalEmail || `${finalName.toLowerCase().replace(/\s+/g, ".")}@placement.edu.in`,
         }),
       });
 
       if (!res.ok) {
-        throw new Error("Failed to initialize session");
+        throw new Error("Failed to initialize candidate session");
       }
 
       router.push("/dashboard");
       router.refresh();
     } catch (err: any) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
   };
 
-  // Supabase Google Login
+  // Google OAuth Login (or fallback with entered name)
   const handleGoogleLogin = async () => {
     try {
       const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error: supaErr } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/dashboard`,
         },
       });
-      if (error) {
-        console.warn("Google OAuth requires live Supabase config:", error.message);
-        // Fall back to demo login
-        await handleDemoLogin();
+
+      if (supaErr) {
+        console.warn("Supabase Google Auth notice:", supaErr.message);
+        await handleAuthSubmit(fullName.trim() || "Placement Candidate");
       }
     } catch {
-      await handleDemoLogin();
+      await handleAuthSubmit(fullName.trim() || "Placement Candidate");
     }
   };
 
@@ -72,7 +79,7 @@ export default function LoginPage() {
             Welcome to MockMate
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Sign in to start your campus placement mock interview with 1 free credit.
+            Sign up or log in to unlock your placement dashboard and 1 free mock interview credit.
           </p>
         </div>
 
@@ -82,72 +89,46 @@ export default function LoginPage() {
           </div>
         )}
 
-        {message && (
-          <div className="p-3 text-xs rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900">
-            {message}
-          </div>
-        )}
-
-        {/* 1-Click Demo Evaluation Button */}
-        <div className="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-900 dark:text-indigo-200">
-            <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-            <span>Instant Evaluation / Demo Access</span>
-          </div>
-          <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80 leading-relaxed">
-            Test the entire MockMate experience immediately without configuring external credentials. Includes 1 free interview credit.
-          </p>
-          <button
-            onClick={handleDemoLogin}
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors disabled:opacity-50"
-          >
-            <span>{loading ? "Entering..." : "Continue as Guest / Demo Student"}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="relative flex items-center justify-center">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-slate-200 dark:border-slate-800" />
-          </div>
-          <span className="relative px-3 bg-white dark:bg-slate-900 text-xs text-slate-400 uppercase tracking-wider">
-            Or login with details
-          </span>
-        </div>
-
+        {/* Primary Sign Up / Sign In Form */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleDemoLogin();
+            handleAuthSubmit();
           }}
           className="space-y-4"
         >
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Full Name
+              Your Full Name <span className="text-rose-500">*</span>
             </label>
-            <input
-              type="text"
-              placeholder="e.g. Rahul Sharma"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div className="relative">
+              <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <input
+                type="text"
+                required
+                placeholder="Enter your full name"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </div>
+            <p className="text-[11px] text-slate-500 mt-1">
+              This name will appear on your interview room greeting and feedback report.
+            </p>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              College Email
+              College Email ID
             </label>
             <div className="relative">
               <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
               <input
                 type="email"
-                placeholder="student@college.edu.in"
+                placeholder="e.g. student@college.edu.in"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
@@ -155,16 +136,40 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 px-4 rounded-xl text-sm font-semibold bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 transition-colors shadow-sm disabled:opacity-50"
+            className="w-full py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            {loading ? "Signing In..." : "Sign In & Start Free"}
+            <span>{loading ? "Entering Dashboard..." : "Continue to Dashboard (1 Credit Free)"}</span>
+            <ArrowRight className="w-4 h-4" />
           </button>
         </form>
+
+        <div className="relative flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-slate-200 dark:border-slate-800" />
+          </div>
+          <span className="relative px-3 bg-white dark:bg-slate-900 text-xs text-slate-400 uppercase tracking-wider">
+            Or quick demo
+          </span>
+        </div>
+
+        {/* 1-Click Guest Access */}
+        <button
+          onClick={() => handleAuthSubmit(fullName.trim() || "Placement Candidate")}
+          disabled={loading}
+          className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-center gap-2"
+        >
+          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+          <span>
+            {fullName.trim()
+              ? `Enter as ${fullName.trim()} (Demo Mode)`
+              : "Quick Demo Guest Access (1 Credit)"}
+          </span>
+        </button>
 
         {/* Google OAuth Button */}
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-sm font-medium text-slate-700 dark:text-slate-200 transition-colors"
+          className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24">
             <path
@@ -187,8 +192,8 @@ export default function LoginPage() {
           <span>Continue with Google</span>
         </button>
 
-        <p className="text-center text-xs text-slate-500">
-          By signing in, you agree to placement preparation terms and fair evaluation.
+        <p className="text-center text-[11px] text-slate-500">
+          By continuing, you agree to fair placement evaluation and realistic interview preparation.
         </p>
       </div>
     </div>

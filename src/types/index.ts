@@ -133,3 +133,4 @@ export interface TailorResult {
   summary: string;
   action_plan: string[];
 }
+

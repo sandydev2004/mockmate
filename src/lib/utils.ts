@@ -77,3 +77,4 @@ export function getDifficultyBadgeColor(difficulty: string): string {
       return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300";
   }
 }
+

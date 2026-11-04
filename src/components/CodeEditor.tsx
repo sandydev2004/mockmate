@@ -46,3 +46,4 @@ export function CodeEditor({ language, value, onChange, isDark = true }: CodeEdi
     </div>
   );
 }
+

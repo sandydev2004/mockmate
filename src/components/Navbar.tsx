@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
 import {
@@ -14,26 +14,47 @@ import {
   X,
   CreditCard,
   User,
+  LogOut,
 } from "lucide-react";
 
 export function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch user credits
+    // Fetch user session
     fetch("/api/auth/demo")
       .then((res) => res.json())
       .then((data) => {
         if (data.user) {
           setCredits(data.user.credits);
+          setUserName(data.user.full_name);
           setUserEmail(data.user.email);
+        } else {
+          setCredits(null);
+          setUserName(null);
+          setUserEmail(null);
         }
       })
       .catch(() => {});
   }, [pathname]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/demo", { method: "DELETE" });
+      setCredits(null);
+      setUserName(null);
+      setUserEmail(null);
+      router.push("/login");
+      router.refresh();
+    } catch (err) {
+      console.warn("Logout failed:", err);
+    }
+  };
 
   const navLinks = [
     { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
@@ -97,14 +118,23 @@ export function Navbar() {
 
             <ThemeToggle />
 
-            {userEmail ? (
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
-              >
-                <User className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="max-w-[120px] truncate">{userEmail.split("@")[0]}</span>
-              </Link>
+            {userName || userEmail ? (
+              <div className="flex items-center gap-1.5">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
+                >
+                  <User className="w-3.5 h-3.5 text-indigo-500" />
+                  <span className="max-w-[130px] truncate">{userName || userEmail?.split("@")[0]}</span>
+                </Link>
+                <button
+                  onClick={handleLogout}
+                  title="Log out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
             ) : (
               <Link
                 href="/login"
@@ -162,13 +192,25 @@ export function Navbar() {
               {credits !== null ? `${credits} Credits` : "1 Free Credit"}
             </Link>
 
-            <Link
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white"
-            >
-              {userEmail ? "Account" : "Log In"}
-            </Link>
+            {userName || userEmail ? (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300"
+              >
+                Log Out ({userName || userEmail?.split("@")[0]})
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-indigo-600 text-white"
+              >
+                Log In
+              </Link>
+            )}
           </div>
         </div>
       )}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { appStore } from "@/lib/store";
 import {
@@ -16,7 +17,10 @@ import { formatDate, getDifficultyBadgeColor, getRoleBadgeColor, getScoreColor }
 
 export default async function ProgressPage() {
   const user = await getCurrentUser();
-  const userId = user?.id || "demo-user-123";
+  if (!user) {
+    redirect("/login");
+  }
+  const userId = user.id;
   const interviews = appStore.getUserInterviews(userId);
 
   // Scored interviews sorted by date ascending for line chart
@@ -200,3 +204,4 @@ export default async function ProgressPage() {
     </div>
   );
 }
+

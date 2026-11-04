@@ -27,7 +27,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        // Fetch credits from profiles
+        // Fetch credits and full_name from profiles
         const { data: profile } = await supabase
           .from("profiles")
           .select("credits, full_name")
@@ -37,23 +37,26 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         return {
           id: user.id,
           email: user.email || "user@mockmate.ai",
-          full_name: profile?.full_name || user.user_metadata?.full_name,
+          full_name: profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Candidate",
           credits: profile?.credits ?? 1,
         };
       }
     } catch (err) {
-      console.warn("Supabase auth check failed, falling back to local session:", err);
+      console.warn("Supabase auth check failed, checking local session:", err);
     }
   }
 
-  // Fallback to local / demo session
-  const userId = demoCookie || "demo-user-123";
-  const profile = appStore.getProfile(userId);
+  // Check local session cookie
+  if (demoCookie) {
+    const profile = appStore.getProfile(demoCookie);
+    return {
+      id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name || "Candidate",
+      credits: profile.credits,
+    };
+  }
 
-  return {
-    id: profile.id,
-    email: profile.email,
-    full_name: profile.full_name,
-    credits: profile.credits,
-  };
+  // Not logged in -> Return null to enforce login requirement
+  return null;
 }

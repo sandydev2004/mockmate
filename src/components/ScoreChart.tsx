@@ -87,3 +87,4 @@ export function ScoreChart({ data }: ScoreChartProps) {
     </div>
   );
 }
+
