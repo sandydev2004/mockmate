@@ -58,9 +58,24 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500">
-          <p>© {new Date().getFullYear()} MockMate AI. Built for Indian Engineering Students.</p>
-          <p className="flex items-center gap-1 mt-2 sm:mt-0">
+        <div className="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+          <div className="flex flex-wrap items-center gap-4">
+            <p>© {new Date().getFullYear()} MockMate AI. Built for Indian Engineering Students.</p>
+            <div className="flex items-center gap-3">
+              <Link href="/privacy" className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                Privacy Policy
+              </Link>
+              <span>•</span>
+              <Link href="/terms" className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                Terms of Service
+              </Link>
+              <span>•</span>
+              <a href="mailto:support@mockmate.ai" className="hover:text-indigo-600 dark:hover:text-indigo-400">
+                Contact Support
+              </a>
+            </div>
+          </div>
+          <p className="flex items-center gap-1">
             Crafted with <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> for campus placements
           </p>
         </div>

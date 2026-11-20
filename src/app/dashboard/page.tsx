@@ -2,6 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { appStore } from "@/lib/store";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 import {
   PlayCircle,
   FileText,
@@ -24,12 +27,42 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const profile = appStore.getProfile(user.id);
-  const interviews = appStore.getUserInterviews(user.id);
-  const resumes = appStore.getUserResumes(user.id);
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let interviews: any[] = [];
+  let resumes: any[] = [];
 
-  // Stats calculation
-  const completedInterviews = interviews.filter((i) => i.status === "completed" && i.overall_score);
+  if (supabaseUrl && !supabaseUrl.includes("mockmate-demo")) {
+    try {
+      const supabase = createAdminClient();
+      const { data: dbInterviews } = await supabase
+        .from("interviews")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("started_at", { ascending: false });
+      interviews = dbInterviews || [];
+
+      const { data: dbResumes } = await supabase
+        .from("resumes")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      resumes = dbResumes || [];
+    } catch (dbErr) {
+      console.warn("[DASHBOARD] Supabase fetch error, fallback to local store:", dbErr);
+      interviews = appStore.getUserInterviews(user.id);
+      resumes = appStore.getUserResumes(user.id);
+    }
+  } else {
+    interviews = appStore.getUserInterviews(user.id);
+    resumes = appStore.getUserResumes(user.id);
+  }
+
+  const profile = appStore.getProfile(user.id);
+
+  // Stats calculation (excluding admin test sessions)
+  const completedInterviews = interviews.filter(
+    (i) => i.status === "completed" && i.overall_score && !i.is_admin_test
+  );
   const avgScore = completedInterviews.length > 0
     ? Math.round(
         completedInterviews.reduce((acc, curr) => acc + (curr.overall_score || 0), 0) /
@@ -62,15 +95,21 @@ export default async function DashboardPage() {
               <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
               <div>
                 <p className="text-[11px] text-indigo-200 uppercase tracking-wider font-medium">Credits</p>
-                <p className="text-lg font-bold leading-none">{user.credits} Available</p>
+                {user.role === "admin" ? (
+                  <p className="text-lg font-bold leading-none">Admin: unlimited</p>
+                ) : (
+                  <p className="text-lg font-bold leading-none">{user.credits} Available</p>
+                )}
               </div>
             </div>
-            <Link
-              href="/pricing"
-              className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white text-indigo-900 hover:bg-indigo-50 transition-colors shadow-sm"
-            >
-              Get More
-            </Link>
+            {user.role !== "admin" && (
+              <Link
+                href="/pricing"
+                className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-white text-indigo-900 hover:bg-indigo-50 transition-colors shadow-sm"
+              >
+                Get More
+              </Link>
+            )}
           </div>
 
           <Link

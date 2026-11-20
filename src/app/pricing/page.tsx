@@ -23,7 +23,7 @@ export default function PricingPage() {
 
   // Load current user credits
   useEffect(() => {
-    fetch("/api/auth/demo")
+    fetch("/api/auth/session")
       .then((res) => res.json())
       .then((data) => {
         if (data.user) setCredits(data.user.credits);

@@ -62,60 +62,10 @@ ${sanitizeResumeText(targetResumeText)}
 ${job_description.trim()}
 </target_job_description>`;
 
-    const fallbackResult: TailorResult = {
-      match_score: 74,
-      matched_skills: [
-        "Data Structures & Algorithms",
-        "React",
-        "Node.js",
-        "Git",
-        "REST APIs",
-        "SQL",
-      ],
-      missing_keywords: [
-        "Docker / Containerization",
-        "Redis caching",
-        "CI/CD pipelines",
-        "System latency benchmarking",
-        "Kafka / Event queues",
-      ],
-      bullet_suggestions: [
-        {
-          original: "Developed a full stack web application using React and Node.js for student notes.",
-          improved:
-            "Architected responsive full-stack note-sharing platform serving 500+ campus students, improving content retrieval speeds by 38% via Redis caching.",
-          reason:
-            "Quantifies impact and demonstrates production-grade caching techniques sought by the recruiter.",
-        },
-        {
-          original: "Worked on SQL queries and database management for semester project.",
-          improved:
-            "Engineered normalized PostgreSQL schema with indexed queries, reducing p95 database response latency under 45ms across 10,000 synthetic records.",
-          reason:
-            "Replaces generic phrasing with specific database tuning metrics and measurable scale.",
-        },
-        {
-          original: "Collaborated with team members to resolve bugs.",
-          improved:
-            "Coordinated with a 4-engineer peer team via Git PR workflows and automated testing, resolving 25+ critical edge-case bugs ahead of sprint deadline.",
-          reason:
-            "Highlights agile team collaboration, code reviews, and proactive delivery.",
-        },
-      ],
-      summary:
-        "Your profile has solid core full-stack foundations that match the foundational requirements of this job. Incorporating cloud, caching, and concrete performance metrics will significantly increase your ATS ranking.",
-      action_plan: [
-        "Include Redis and Docker keywords in your Technical Skills section",
-        "Update project bullet points using the suggested metric-driven STAR format",
-        "Add a direct link to your live GitHub deployment and system architecture diagram",
-      ],
-    };
-
     const result = await generateStructuredJSON<TailorResult>(
       userPrompt,
       resumeTailorSchema,
-      systemPrompt,
-      fallbackResult
+      systemPrompt
     );
 
     return NextResponse.json(result);

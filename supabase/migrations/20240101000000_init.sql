@@ -25,18 +25,64 @@ create policy "Users can update own profile"
   on public.profiles for update 
   using (auth.uid() = id);
 
--- Trigger for new user signup to automatically insert a profile with 1 free credit
-create or replace function public.handle_new_user()
+-- Prevent authenticated clients from modifying credits directly
+create or replace function public.protect_profile_credits()
 returns trigger as $$
 begin
+  if auth.role() = 'authenticated' and new.credits is distinct from old.credits then
+    raise exception 'Permission denied: Credits can only be changed server-side or via secure RPC';
+  end if;
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists tr_protect_profile_credits on public.profiles;
+create trigger tr_protect_profile_credits
+  before update on public.profiles
+  for each row execute procedure public.protect_profile_credits();
+
+-- Trigger for new user signup (Email & Google OAuth) to automatically insert a profile with 1 free credit
+create or replace function public.handle_new_user()
+returns trigger as $$
+declare
+  candidate_name text;
+  existing_profile record;
+begin
+  candidate_name := coalesce(
+    nullif(trim(new.raw_user_meta_data->>'full_name'), ''),
+    nullif(trim(new.raw_user_meta_data->>'name'), ''),
+    split_part(new.email, '@', 1)
+  );
+
+  -- 1. Check if profile for this user ID already exists
+  select * into existing_profile from public.profiles where id = new.id;
+  if existing_profile.id is not null then
+    if (existing_profile.full_name is null or existing_profile.full_name = split_part(existing_profile.email, '@', 1)) and candidate_name is not null then
+      update public.profiles set full_name = candidate_name where id = new.id;
+    end if;
+    return new;
+  end if;
+
+  -- 2. Check if a profile exists with the same email (e.g. existing email/password user signing in via Google)
+  select * into existing_profile from public.profiles where lower(email) = lower(new.email) limit 1;
+  if existing_profile.id is not null then
+    update public.profiles
+    set id = new.id,
+        full_name = coalesce(nullif(trim(public.profiles.full_name), ''), candidate_name)
+    where id = existing_profile.id;
+    return new;
+  end if;
+
+  -- 3. Brand new user: insert profile with exactly 1 free credit
   insert into public.profiles (id, email, full_name, credits)
   values (
     new.id,
     new.email,
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1)),
+    candidate_name,
     1
   )
   on conflict (id) do nothing;
+
   return new;
 end;
 $$ language plpgsql security definer;
@@ -297,3 +343,35 @@ create policy "Users can upload own resume files"
 create policy "Users can read own resume files"
   on storage.objects for select
   using (bucket_id = 'resumes' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- 11. INTEGRITY EVENTS TABLE (Anti-cheating & proctoring metrics)
+create table if not exists public.integrity_events (
+  id uuid default gen_random_uuid() primary key,
+  interview_id uuid references public.interviews(id) on delete cascade not null,
+  event_type text not null check (event_type in ('tab_switch', 'window_blur', 'fullscreen_exit', 'paste_attempt')),
+  details jsonb,
+  created_at timestamptz not null default now()
+);
+
+alter table public.integrity_events enable row level security;
+
+create policy "Users can view integrity events for own interviews" 
+  on public.integrity_events for select 
+  using (
+    exists (
+      select 1 from public.interviews
+      where interviews.id = integrity_events.interview_id
+      and interviews.user_id = auth.uid()
+    )
+  );
+
+create policy "Users can insert integrity events for own interviews" 
+  on public.integrity_events for insert 
+  with check (
+    exists (
+      select 1 from public.interviews
+      where interviews.id = integrity_events.interview_id
+      and interviews.user_id = auth.uid()
+    )
+  );
+

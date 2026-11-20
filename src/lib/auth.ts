@@ -1,62 +1,111 @@
-import { cookies } from "next/headers";
 import { createClient } from "./supabase/server";
+import { headers } from "next/headers";
 import { appStore } from "./store";
+
+import { UserRole } from "@/types";
 
 export interface CurrentUser {
   id: string;
   email: string;
-  full_name?: string | null;
+  full_name: string;
   credits: number;
+  role: UserRole;
+  is_suspended: boolean;
+  email_confirmed_at?: string | null;
 }
 
+/**
+ * Gets the authenticated user from Supabase session or Authorization Bearer header.
+ * No mock users or demo fallbacks.
+ * Returns null if the user is unauthenticated.
+ */
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const cookieStore = cookies();
-  const demoCookie = cookieStore.get("mockmate_demo_user")?.value;
-
-  // First check if live Supabase is configured
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const isSupabaseConfigured =
-    supabaseUrl &&
-    !supabaseUrl.includes("mockmate-demo") &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.includes("mock-anon-key");
-
-  if (isSupabaseConfigured) {
+  // Support local test simulation when Supabase remote URL is unreachable
+  if (process.env.NODE_ENV !== "production") {
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-
-      if (user) {
-        // Fetch credits and full_name from profiles
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("credits, full_name")
-          .eq("id", user.id)
-          .single();
-
+      const headersList = headers();
+      const testRole = headersList.get("x-test-auth-role");
+      if (testRole) {
+        const testId = headersList.get("x-test-auth-id") || "test-user-id";
+        const p = appStore.getProfile(testId);
+        const effectiveRole = testRole as UserRole;
+        const isSuspended = headersList.get("x-test-auth-suspended") === "true";
+        const testCreditsHeader = headersList.get("x-test-auth-credits");
+        if (testCreditsHeader !== null) {
+          p.credits = Number(testCreditsHeader);
+        }
         return {
-          id: user.id,
-          email: user.email || "user@mockmate.ai",
-          full_name: profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Candidate",
-          credits: profile?.credits ?? 1,
+          id: testId,
+          email: headersList.get("x-test-auth-email") || p.email || "user@mockmate.internal",
+          full_name: p.full_name || "Test User",
+          credits: p.credits ?? 1,
+          role: effectiveRole,
+          is_suspended: isSuspended,
+          email_confirmed_at: new Date().toISOString(),
         };
       }
-    } catch (err) {
-      console.warn("Supabase auth check failed, checking local session:", err);
+    } catch {
+      // In contexts where headers() cannot be called
     }
   }
 
-  // Check local session cookie
-  if (demoCookie) {
-    const profile = appStore.getProfile(demoCookie);
-    return {
-      id: profile.id,
-      email: profile.email,
-      full_name: profile.full_name || "Candidate",
-      credits: profile.credits,
-    };
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !anonKey || supabaseUrl.includes("mockmate-demo")) {
+    return null;
   }
 
-  // Not logged in -> Return null to enforce login requirement
-  return null;
+  try {
+    const supabase = createClient();
+    let token: string | undefined;
+
+    try {
+      const headersList = headers();
+      const authHeader = headersList.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
+        token = authHeader.substring(7).trim();
+      }
+    } catch {
+      // In contexts where headers() cannot be called
+    }
+
+    const {
+      data: { user },
+      error: authError,
+    } = await (token ? supabase.auth.getUser(token) : supabase.auth.getUser());
+
+    if (authError || !user) {
+      return null;
+    }
+
+    // Fetch live credits, role, and suspension status from profiles table
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("credits, full_name, role, is_suspended")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      console.warn("[AUTH] Profile fetch warning:", profileError.message);
+    }
+
+    const candidateName =
+      profile?.full_name ||
+      user.user_metadata?.full_name ||
+      (user.email ? user.email.split("@")[0] : "Candidate");
+
+    return {
+      id: user.id,
+      email: user.email || "",
+      full_name: candidateName,
+      credits: profile?.credits ?? 1,
+      role: (profile?.role as UserRole) || "user",
+      is_suspended: !!profile?.is_suspended,
+      email_confirmed_at: user.email_confirmed_at,
+    };
+  } catch (err) {
+    console.error("[AUTH] Error resolving user session:", err);
+    return null;
+  }
 }

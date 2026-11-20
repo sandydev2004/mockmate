@@ -1,295 +1,673 @@
+import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { HeroInteractive } from "@/components/landing/HeroInteractive";
+import { FaqAccordion } from "@/components/landing/FaqAccordion";
+import { StickyMobileCTA } from "@/components/landing/StickyMobileCTA";
+import { SocialProofSection } from "@/components/landing/SocialProofSection";
 import {
   Sparkles,
-  PlayCircle,
-  Code2,
-  FileCheck2,
-  Award,
   Zap,
+  Target,
+  ShieldCheck,
+  Code2,
+  FileText,
+  Clock,
   ArrowRight,
   CheckCircle2,
-  Terminal,
-  Cpu,
-  Building2,
-  Mic,
-  TrendingUp,
+  Award,
+  BarChart3,
+  Lock,
 } from "lucide-react";
 
-export default function LandingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LandingPage() {
+  // If candidate is already authenticated, directly redirect them to dashboard
+  const user = await getCurrentUser();
+  if (user) {
+    redirect("/dashboard");
+  }
+
+  // Structured Data / JSON-LD for SEO & Rich Snippets
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebSite",
+        "@id": "https://mockmate.ai/#website",
+        "url": "https://mockmate.ai",
+        "name": "MockMate AI",
+        "description": "AI-powered mock placement interviews and instant evaluation for engineering students.",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://mockmate.ai/?q={search_term_string}",
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://mockmate.ai/#software",
+        "name": "MockMate",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "All modern web browsers",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "INR"
+        },
+        "description": "Realistic campus placement technical & HR mock interviews with on-device proctoring and comprehensive scoring."
+      },
+      {
+        "@type": "FAQPage",
+        "@id": "https://mockmate.ai/#faq",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is the first mock interview completely free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes! Every new account gets 1 free full-length mock interview with an instant score and feedback report. No credit or debit card is needed."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Will my camera video be recorded or uploaded to a server?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. When Proctored Mode is enabled, face and presence verification is processed purely on-device in your browser. Video streams are never sent to or stored on our servers. You can also pick Practice Mode to keep the camera completely off."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I answer in Hinglish or everyday English?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Our AI understands natural conversational English, Hinglish, and technical terminology typical in Indian campus drives."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Which companies and roles can I practice for?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You can prepare for Service companies (TCS NQT, Infosys, Wipro, Cognizant, Accenture) and Product companies (Amazon, Microsoft, startups, fintechs) across SDE, Data Analyst, QA, and Core CS roles."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What kind of feedback do I get after the interview?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "You receive an instant 100-point composite score, breakdowns in Problem Solving, Communication, and CS Fundamentals, question-by-question critique, and an actionable improvement checklist."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How do credits work if I want to practice more?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "1 credit equals 1 complete interview with evaluation. After your free trial, you can purchase packs starting at ₹99 for 3 interviews or ₹249 for 10 interviews. Credits never expire."
+            }
+          }
+        ]
+      }
+    ]
+  };
+
   return (
-    <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-28 border-b border-slate-200/60 dark:border-slate-800/60 bg-gradient-to-b from-indigo-50/50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-indigo-100/80 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 mb-6 shadow-sm">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Built Specifically for Indian Campus Placements 2024-2025</span>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* Structured data injection */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+
+      {/* 1. HERO SECTION */}
+      <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden border-b border-slate-900">
+        {/* Subtle background glow */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <HeroInteractive />
+        </div>
+      </section>
+
+      {/* 2. PROBLEM / BENEFIT STRIP */}
+      <section className="py-12 bg-slate-900/50 border-b border-slate-800/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div className="w-10 h-10 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-200 text-base">Practice Without Nervousness</h3>
+                <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+                  Simulate high-pressure campus placement rounds in private until your responses feel natural and confident.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center shrink-0">
+                <Target className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-200 text-base">Know Exactly What to Fix</h3>
+                <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+                  Get actionable metrics on structure, code complexity, and clarity instead of vague polite rejection emails.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800">
+              <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-slate-200 text-base">DSA + HR + Core CS Coverage</h3>
+                <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+                  Target service drive patterns (TCS, Infosys) or deep product problem solving (Amazon, startups) with one tool.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 3. HOW IT WORKS (3 STEPS) */}
+      <section id="how-it-works" className="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="text-center max-w-2xl mx-auto mb-16">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+            Simple 3-Step Routine
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            How to prepare with MockMate
+          </h2>
+          <p className="text-slate-400 mt-3 text-base sm:text-lg">
+            Go from zero confidence to interview-ready in three straightforward steps.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
+          {/* Step 1 */}
+          <div className="flex flex-col p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition relative">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg mb-5 shadow-lg shadow-indigo-600/30">
+              1
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Choose your target drive</h3>
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+              Pick your target role (Software Engineer, Backend, Frontend, QA), company type (Service or Product), and difficulty level.
+            </p>
+            <div className="mt-auto pt-4 border-t border-slate-800 text-xs text-indigo-400 font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Tailors questions to campus syllabus
+            </div>
           </div>
 
-          {/* Main Title */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-slate-900 dark:text-white max-w-4xl mx-auto leading-[1.15]">
-            Ace Your Campus Placement Interviews with{" "}
-            <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 dark:from-indigo-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent">
-              Realistic AI
-            </span>
-          </h1>
+          {/* Step 2 */}
+          <div className="flex flex-col p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition relative">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg mb-5 shadow-lg shadow-indigo-600/30">
+              2
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Take the AI interview</h3>
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+              Speak or type answers, write live code, and respond to smart follow-up questions tailored to your previous responses.
+            </p>
+            <div className="mt-auto pt-4 border-t border-slate-800 text-xs text-indigo-400 font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Practice mode or Proctored mode
+            </div>
+          </div>
 
-          <p className="mt-6 text-lg sm:text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto leading-relaxed">
-            Practice one-on-one mock interviews tailored for TCS, Infosys, Amazon, Swiggy, and startups. Live DSA coding with test runner, CS fundamentals (OS/DBMS/CN), and resume-aware project cross-questioning.
+          {/* Step 3 */}
+          <div className="flex flex-col p-6 rounded-2xl bg-slate-900/60 border border-slate-800 hover:border-slate-700 transition relative">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white font-bold flex items-center justify-center text-lg mb-5 shadow-lg shadow-indigo-600/30">
+              3
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">Get score & improvement report</h3>
+            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+              Review your composite score out of 100, spot logical flaws, inspect ideal solution references, and practice again.
+            </p>
+            <div className="mt-auto pt-4 border-t border-slate-800 text-xs text-indigo-400 font-medium flex items-center gap-1.5">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Instant feedback within 30 seconds
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 4. FEATURES GRID (MAX 6 CARDS) */}
+      <section className="py-16 bg-slate-900/40 border-y border-slate-800/80">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mb-3">
+              Engineered For Campus Placement
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+              Everything you need to clear the round
+            </h2>
+            <p className="text-slate-400 mt-2 text-base">
+              Designed specifically around the hiring rounds of top tier recruiters.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {/* Card 1 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Live Coding & DSA Editor</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Write, run, and debug your code live in Python, Java, C++, or JavaScript with syntax highlight.
+              </p>
+            </div>
+
+            {/* Card 2 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Real Proctoring Simulation</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Simulate actual company test environments with tab-switch limits, fullscreen locks, and strike counters.
+              </p>
+            </div>
+
+            {/* Card 3 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Context-Aware Follow-ups</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                The AI probes your time complexity and edge cases like an interviewer rather than reading static scripts.
+              </p>
+            </div>
+
+            {/* Card 4 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <BarChart3 className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Instant 100-Point Report</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Inspect clear metrics for technical correctness, clarity, and foundational CS concepts.
+              </p>
+            </div>
+
+            {/* Card 5 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <FileText className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Resume-Based Questioning</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Upload your resume to receive tailored questions on your exact projects, tech stack, and internships.
+              </p>
+            </div>
+
+            {/* Card 6 */}
+            <div className="p-6 rounded-xl bg-slate-950/80 border border-slate-800 hover:border-indigo-500/40 transition group">
+              <div className="w-10 h-10 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-4 group-hover:scale-105 transition">
+                <Clock className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1.5">Available 24/7 On Any Device</h3>
+              <p className="text-sm text-slate-400 leading-relaxed">
+                Practice late at night before your campus drive from any mobile phone, tablet, or laptop browser.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. SAMPLE FEEDBACK REPORT PREVIEW */}
+      <section id="sample-report" className="py-20 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+            Transparency
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            What your feedback report looks like
+          </h2>
+          <p className="text-slate-400 mt-2 text-base">
+            Every mock interview generates a detailed report within 30 seconds of submission.
+          </p>
+        </div>
+
+        {/* Report Card Mockup */}
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/90 shadow-2xl p-6 sm:p-8 overflow-hidden relative">
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div>
+              <span className="inline-block px-2.5 py-0.5 rounded text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 uppercase tracking-wide">
+                Sample report
+              </span>
+              <h3 className="text-xl font-bold text-white mt-1">
+                Frontend & DSA Mock Interview — SDE-1
+              </h3>
+              <p className="text-xs text-slate-400">Duration: 24 mins • Target: Tier-1 Product Company</p>
+            </div>
+
+            <div className="flex items-center gap-3 bg-slate-950 px-5 py-3 rounded-xl border border-slate-800">
+              <div>
+                <div className="text-xs text-slate-400 font-medium">Composite Score</div>
+                <div className="text-2xl font-bold text-emerald-400">84 / 100</div>
+              </div>
+              <Award className="w-7 h-7 text-emerald-400 shrink-0" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
+            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800">
+              <div className="text-xs text-slate-400">Problem Solving & DSA</div>
+              <div className="text-lg font-bold text-white mt-0.5">88%</div>
+              <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div className="w-[88%] h-full bg-emerald-500 rounded-full" />
+              </div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800">
+              <div className="text-xs text-slate-400">Technical Clarity & Core CS</div>
+              <div className="text-lg font-bold text-white mt-0.5">82%</div>
+              <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div className="w-[82%] h-full bg-indigo-500 rounded-full" />
+              </div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-slate-950/70 border border-slate-800">
+              <div className="text-xs text-slate-400">Communication & Structure</div>
+              <div className="text-lg font-bold text-white mt-0.5">81%</div>
+              <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+                <div className="w-[81%] h-full bg-cyan-500 rounded-full" />
+              </div>
+            </div>
+          </div>
+
+          {/* 3 Actionable Tips */}
+          <div>
+            <h4 className="text-sm font-semibold uppercase tracking-wider text-slate-300 mb-3 flex items-center gap-2">
+              <Zap className="w-4 h-4 text-amber-400" /> Top 3 Specific Improvement Tips
+            </h4>
+            <div className="space-y-3">
+              <div className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 text-sm">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 font-bold text-xs">
+                  1
+                </div>
+                <div className="text-slate-300 leading-snug">
+                  <strong className="text-white font-medium">State time & space bounds first:</strong> In the Two-Pointer question, you jumped directly into code. State your proposed O(N) time and O(1) auxiliary space before typing.
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 text-sm">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 font-bold text-xs">
+                  2
+                </div>
+                <div className="text-slate-300 leading-snug">
+                  <strong className="text-white font-medium">Cover boundary edge cases explicitly:</strong> Make sure to mention behavior on empty arrays and duplicate values before concluding your solution.
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-950/80 border border-slate-800 text-sm">
+                <div className="w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-300 flex items-center justify-center shrink-0 font-bold text-xs">
+                  3
+                </div>
+                <div className="text-slate-300 leading-snug">
+                  <strong className="text-white font-medium">Structure HR questions with STAR:</strong> When asked about your final year project conflict, describe the specific Situation and measurable Result rather than generic teamwork statements.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. TRUST & PRIVACY */}
+      <section className="py-16 bg-slate-900/40 border-y border-slate-800/80">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-3">
+              <Lock className="w-3.5 h-3.5" /> Honest Privacy Guarantee
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+              Your privacy always comes first
+            </h2>
+            <p className="text-slate-400 mt-2 text-sm">
+              We build tools to empower students, not to harvest sensitive personal recordings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-white">On-Device Face Processing</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  In Proctored Mode, camera frames are evaluated locally in your browser. Video streams are never sent or stored on our servers.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-white">Practice Mode Without Camera</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Prefer practicing with zero camera permissions? Switch to Practice Mode anytime with a single toggle.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-white">Standard Integrity Signals</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Only metadata (tab switch count, fullscreen status) is logged to build your report. No background keylogging.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800/80 flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-semibold text-white">You Control Your History</h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Delete your past interview records, resumes, or profile data whenever you wish directly from your account.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 7. PRICING SECTION */}
+      <section id="pricing" className="py-20 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 mb-3">
+            Transparent Indian Pricing
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Affordable for every student budget
+          </h2>
+          <p className="text-slate-400 mt-2 text-base">
+            Start completely free. Pay only as you practice more. No recurring monthly subscriptions.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* Tier 1: Free Trial */}
+          <div className="flex flex-col p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 relative hover:border-slate-700 transition">
+            <div className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Free Trial
+            </div>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-4xl font-extrabold text-white">₹0</span>
+              <span className="text-sm text-slate-400">/ forever</span>
+            </div>
+            <p className="text-sm text-slate-400 mt-2">
+              Ideal to experience an authentic AI interview before your drive.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm text-slate-300">
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                1 complete mock interview credit
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Instant 100-point feedback report
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Practice & Proctored mode access
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                No credit/debit card required
+              </li>
+            </ul>
+
+            <div className="mt-8 pt-4 border-t border-slate-800">
+              <Link
+                href="/register"
+                className="block w-full py-2.5 px-4 rounded-xl text-center font-medium text-sm bg-slate-800 hover:bg-slate-700 text-white transition"
+              >
+                Sign up free
+              </Link>
+            </div>
+          </div>
+
+          {/* Tier 2: Starter Pack (Highlighted) */}
+          <div className="flex flex-col p-6 sm:p-8 rounded-2xl bg-indigo-950/30 border-2 border-indigo-500 relative shadow-xl shadow-indigo-500/10">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-indigo-600 text-white">
+              Most Popular
+            </div>
+            <div className="text-sm font-semibold text-indigo-300 uppercase tracking-wider">
+              Starter Pack
+            </div>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-4xl font-extrabold text-white">₹99</span>
+              <span className="text-sm text-slate-400">one-time</span>
+            </div>
+            <p className="text-sm text-slate-400 mt-2">
+              Great for cracking 1-2 upcoming company placement drives.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm text-slate-300">
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <strong>3 full-length interview credits</strong>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Just ₹33 per full interview
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                All technical & HR rounds
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Credits never expire
+              </li>
+            </ul>
+
+            <div className="mt-8 pt-4 border-t border-indigo-900/60">
+              <Link
+                href="/register?plan=starter"
+                className="block w-full py-2.5 px-4 rounded-xl text-center font-semibold text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition shadow-lg shadow-indigo-600/30"
+              >
+                Get 3 interviews for ₹99
+              </Link>
+            </div>
+          </div>
+
+          {/* Tier 3: Placement Pro */}
+          <div className="flex flex-col p-6 sm:p-8 rounded-2xl bg-slate-900/60 border border-slate-800 relative hover:border-slate-700 transition">
+            <div className="text-sm font-semibold text-slate-400 uppercase tracking-wider">
+              Placement Pro
+            </div>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-4xl font-extrabold text-white">₹249</span>
+              <span className="text-sm text-slate-400">one-time</span>
+            </div>
+            <p className="text-sm text-slate-400 mt-2">
+              Complete season preparation covering service and product companies.
+            </p>
+
+            <ul className="mt-6 space-y-3 text-sm text-slate-300">
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <strong>10 full-length interview credits</strong>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Just ₹24.9 per full interview
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Resume Tailor analysis included
+              </li>
+              <li className="flex items-center gap-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                Priority AI response generation
+              </li>
+            </ul>
+
+            <div className="mt-8 pt-4 border-t border-slate-800">
+              <Link
+                href="/register?plan=pro"
+                className="block w-full py-2.5 px-4 rounded-xl text-center font-medium text-sm bg-slate-800 hover:bg-slate-700 text-white transition"
+              >
+                Get 10 interviews for ₹249
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 8. SOCIAL PROOF SECTION (Strictly conditionally rendered) */}
+      <SocialProofSection />
+
+      {/* 9. FAQ ACCORDION (6 precise items) */}
+      <section id="faq" className="py-20 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700 mb-3">
+            Got Questions?
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Frequently Asked Questions
+          </h2>
+          <p className="text-slate-400 mt-2 text-base">
+            Everything you need to know about MockMate before taking your first interview.
+          </p>
+        </div>
+
+        <FaqAccordion />
+      </section>
+
+      {/* 10. FINAL CALL-TO-ACTION BAND */}
+      <section className="py-20 bg-gradient-to-b from-slate-900 to-indigo-950/40 border-t border-slate-800">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+            Crack your campus placement with confidence
+          </h2>
+          <p className="text-slate-300 mt-4 max-w-xl mx-auto text-base sm:text-lg">
+            Join thousands of engineering students practicing technical and HR rounds on MockMate.
           </p>
 
-          {/* Action CTAs */}
           <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
-              href="/interview/setup"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl font-semibold text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
+              href="/register"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-base bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 group"
             >
-              <PlayCircle className="w-5 h-5" />
-              <span>Start Free Interview</span>
-              <span className="text-xs py-0.5 px-2 rounded-full bg-white/20">1 Free Credit</span>
-            </Link>
-
-            <Link
-              href="/resume-tailor"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-base bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/60 shadow-sm transition-all"
-            >
-              <FileCheck2 className="w-5 h-5 text-indigo-500" />
-              <span>Tailor Resume for JD</span>
+              Start your free mock interview
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
-
-          {/* Social Proof Tags */}
-          <div className="mt-12 pt-8 border-t border-slate-200/60 dark:border-slate-800/60 grid grid-cols-2 sm:grid-cols-4 gap-4 text-left">
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-              <Building2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Service & Product</p>
-                <p className="text-[11px] text-slate-500">TCS, Amazon, Startups</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-              <Code2 className="w-5 h-5 text-purple-600 dark:text-purple-400 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Monaco + Judge0</p>
-                <p className="text-[11px] text-slate-500">Python, C++, Java, JS</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-              <Cpu className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Core CS Rounds</p>
-                <p className="text-[11px] text-slate-500">OS, DBMS, CN & OOP</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5 p-3 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
-              <Mic className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Voice & Text</p>
-                <p className="text-[11px] text-slate-500">Real-time speech-to-text</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature Breakdown */}
-      <section className="py-20 bg-white dark:bg-slate-900">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Why MockMate Works
-            </h2>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">
-              Everything you need to secure top campus placement offers
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Feature 1 */}
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-5">
-                <FileCheck2 className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Resume-Aware Interviewing
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Upload your resume PDF. The AI reads your declared projects, internships, and tech stacks, asking deep follow-ups just like a real engineering manager.
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-5">
-                <Terminal className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Live DSA Code Execution
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Full Monaco code editor with syntax highlighting in Python, C++, Java, and JS. Run code against sample and hidden test cases with Judge0 before submitting.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="p-6 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/80 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors">
-              <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-5">
-                <Award className="w-6 h-6" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">
-                Structured Feedback Reports
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Get an instant placement readiness score (0-100) with detailed ratings on Correctness, Communication, Depth, and Problem Solving with concrete improvements.
-              </p>
-            </div>
-          </div>
-
-          {/* Resume Tailor Showcase */}
-          <div className="mt-12 p-8 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-8 shadow-xl">
-            <div className="space-y-3 max-w-xl">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/20 text-indigo-300 border border-indigo-400/30">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Bonus Placement Tool</span>
-              </div>
-              <h3 className="text-2xl font-bold">
-                ATS Resume Matcher & Bullet Point Rewriter
-              </h3>
-              <p className="text-slate-300 text-sm leading-relaxed">
-                Paste any job description from LinkedIn or campus portal. MockMate reveals missing keywords and rewrites weak resume bullets using the proven Google XYZ formula.
-              </p>
-            </div>
-            <Link
-              href="/resume-tailor"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white text-indigo-950 hover:bg-indigo-50 shadow-md shrink-0 transition-all"
-            >
-              Try Resume Tailor
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="py-20 bg-slate-50 dark:bg-slate-950 border-t border-slate-200/60 dark:border-slate-800/60">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <h2 className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-              Transparent Student Pricing
-            </h2>
-            <p className="text-3xl font-extrabold text-slate-900 dark:text-white mt-2">
-              Affordable interview packs made for student budgets
-            </p>
-            <p className="text-slate-600 dark:text-slate-400 text-sm mt-2">
-              Every new user receives 1 free interview credit upon signup. No recurring subscription.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {/* Free Tier */}
-            <div className="p-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm">
-              <div>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Free Trial</h3>
-                <p className="text-xs text-slate-500 mt-1">Get started right away</p>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white">₹0</span>
-                  <span className="text-xs text-slate-500">/ 1 interview</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 1 full mock interview</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Choice of any round & company</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Complete feedback report</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Voice input toggle</li>
-                </ul>
-              </div>
-              <Link
-                href="/interview/setup"
-                className="mt-8 block text-center py-2.5 px-4 rounded-xl font-semibold text-sm bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-900 dark:text-white transition-colors"
-              >
-                Claim Free Interview
-              </Link>
-            </div>
-
-            {/* Starter Pack */}
-            <div className="p-7 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm">
-              <div>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Starter Pack</h3>
-                <p className="text-xs text-slate-500 mt-1">3 Full Interviews</p>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white">₹99</span>
-                  <span className="text-xs text-slate-500">(₹33 / interview)</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 3 interview credits</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> DSA code execution via Judge0</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Resume-aware question mode</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> ATS resume tailoring</li>
-                </ul>
-              </div>
-              <Link
-                href="/pricing"
-                className="mt-8 block text-center py-2.5 px-4 rounded-xl font-semibold text-sm bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 transition-colors"
-              >
-                Buy 3 Pack (₹99)
-              </Link>
-            </div>
-
-            {/* Placement Pro */}
-            <div className="relative p-7 rounded-2xl bg-gradient-to-b from-indigo-50/80 to-white dark:from-slate-900 dark:to-slate-900 border-2 border-indigo-500 flex flex-col justify-between shadow-lg shadow-indigo-500/10">
-              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-indigo-600 text-[11px] font-bold text-white uppercase tracking-wider">
-                Most Popular
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-slate-900 dark:text-white">Placement Pro</h3>
-                <p className="text-xs text-slate-500 mt-1">10 Full Interviews</p>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-3xl font-extrabold text-slate-900 dark:text-white">₹249</span>
-                  <span className="text-xs text-slate-500">(₹24.9 / interview)</span>
-                </div>
-                <ul className="mt-6 space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> 10 interview credits</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Unlimited ATS resume tailoring</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Progress analytics & score chart</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> STAR behavioral coaching</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" /> Full DSA solutions and test cases</li>
-                </ul>
-              </div>
-              <Link
-                href="/pricing"
-                className="mt-8 block text-center py-2.5 px-4 rounded-xl font-semibold text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md transition-colors"
-              >
-                Buy 10 Pack (₹249)
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Final Call to Action */}
-      <section className="py-16 bg-white dark:bg-slate-900 border-t border-slate-200/60 dark:border-slate-800/60">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-6">
-          <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-            Ready to secure your placement offer?
-          </h2>
-          <p className="text-slate-600 dark:text-slate-300 text-sm max-w-xl mx-auto">
-            Join hundreds of engineering students practicing campus mock interviews. Free credit is already loaded on your account.
+          <p className="text-xs text-slate-400 mt-3">
+            1 free interview credit included • No credit or debit card required
           </p>
-          <div className="pt-2">
-            <Link
-              href="/interview/setup"
-              className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25 transition-all"
-            >
-              <Zap className="w-5 h-5 text-amber-300 fill-amber-300" />
-              <span>Launch Your First Interview</span>
-            </Link>
-          </div>
         </div>
       </section>
+
+      {/* Sticky Mobile CTA for mobile viewports */}
+      <StickyMobileCTA />
     </div>
   );
 }
-

@@ -6,7 +6,102 @@ import {
   FeedbackRecord,
   CodeSubmissionRecord,
   PaymentRecord,
+  IntegrityEventRecord,
+  IntegritySummary,
 } from "@/types";
+import { computeServerRiskScore } from "@/lib/risk-config";
+
+export function calculateIntegritySummary(
+  events: IntegrityEventRecord[],
+  interview?: InterviewRecord | null,
+  feedback?: FeedbackRecord | null
+): IntegritySummary {
+  // Tab switches & away time
+  const tabReturnedEvents = events.filter((e) => e.event_type === "tab_returned");
+  const legacyTabSwitches = events.filter((e) => e.event_type === "tab_switch" || e.event_type === "tab_hidden");
+  const tab_switches = Math.max(tabReturnedEvents.length, legacyTabSwitches.length);
+
+  const total_away_seconds = tabReturnedEvents.reduce((acc, curr) => {
+    const s = Number(curr.details?.away_seconds || curr.details?.seconds || 0);
+    return acc + (isNaN(s) ? 0 : s);
+  }, 0);
+
+  // Fullscreen exits & time outside fullscreen
+  const fullscreenExits = events.filter((e) => e.event_type === "fullscreen_exit");
+  const fullscreen_exits = fullscreenExits.length;
+
+  const fullscreenReturnedEvents = events.filter((e) => e.event_type === "fullscreen_returned");
+  const total_fullscreen_exit_seconds = fullscreenReturnedEvents.reduce((acc, curr) => {
+    const s = Number(curr.details?.seconds || curr.details?.duration || 0);
+    return acc + (isNaN(s) ? 0 : s);
+  }, 0);
+
+  // Camera absences & absent time
+  const cameraAbsentEvents = events.filter((e) => e.event_type === "camera_absent" || e.event_type === "camera_blocked");
+  const camera_absences = cameraAbsentEvents.length;
+
+  const cameraReturnedEvents = events.filter((e) => e.event_type === "camera_returned");
+  const total_absent_seconds = cameraReturnedEvents.reduce((acc, curr) => {
+    const s = Number(curr.details?.absent_seconds || curr.details?.seconds || 0);
+    return acc + (isNaN(s) ? 0 : s);
+  }, 0);
+
+  // Multiple faces
+  const multiple_face_events = events.filter((e) => e.event_type === "multiple_faces").length;
+
+  // Paste attempts & new typing / input events
+  const paste_attempts = events.filter(
+    (e) => e.event_type === "paste_blocked" || e.event_type === "paste_attempt"
+  ).length;
+
+  const paste_like_events = events.filter((e) => e.event_type === "paste_like").length;
+  const input_injections = events.filter((e) => e.event_type === "input_injection").length;
+  const shortcuts_blocked = events.filter((e) => e.event_type === "shortcut_blocked").length;
+  const typing_anomalies = events.filter((e) => e.event_type === "typing_anomaly").length;
+  const multiple_monitors_detected = events.some((e) => e.event_type === "multiple_monitors");
+  const devtools_detected = events.some((e) => e.event_type === "devtools_open");
+  const duplicate_sessions = events.filter((e) => e.event_type === "duplicate_session").length;
+  const suspicious_extensions = events.filter((e) => e.event_type === "suspicious_extension_ui").length;
+
+  // Strikes
+  const strikeEvents = events.filter((e) => e.event_type === "strike_added");
+  const strikes = interview?.strikes ?? strikeEvents.length;
+
+  // Auto-submit reason
+  const autoSubmitEvent = events.find((e) => e.event_type === "auto_submit");
+  const auto_submit_reason =
+    interview?.auto_submit_reason || autoSubmitEvent?.details?.reason || null;
+
+  // Server-side weighted risk score calculation (0 - 100 clamped)
+  const riskResult = computeServerRiskScore(events, interview, feedback);
+
+  return {
+    tab_switches,
+    total_away_seconds: Math.round(total_away_seconds),
+    fullscreen_exits,
+    total_fullscreen_exit_seconds: Math.round(total_fullscreen_exit_seconds),
+    camera_absences,
+    total_absent_seconds: Math.round(total_absent_seconds),
+    multiple_face_events,
+    paste_attempts,
+    paste_like_events,
+    input_injections,
+    shortcuts_blocked,
+    typing_anomalies,
+    multiple_monitors_detected,
+    devtools_detected,
+    duplicate_sessions,
+    suspicious_extensions,
+    strikes,
+    risk_level: riskResult.risk_level,
+    risk_score: riskResult.risk_score,
+    top_risk_reasons: riskResult.top_reasons,
+    auto_submit_reason,
+    mode: interview?.mode || "proctored",
+    authenticity_score: feedback?.authenticity_score,
+    authenticity_reason: feedback?.authenticity_reason,
+  };
+}
 
 // In-memory demo store for seamless offline/local development
 class MockMateStore {
@@ -17,6 +112,7 @@ class MockMateStore {
   private feedback: Map<string, FeedbackRecord> = new Map();
   private submissions: Map<string, CodeSubmissionRecord[]> = new Map();
   private payments: Map<string, PaymentRecord> = new Map();
+  private integrityEvents: Map<string, IntegrityEventRecord[]> = new Map();
 
   constructor() {
     // Default demo profile for quick testing
@@ -121,11 +217,39 @@ class MockMateStore {
         email: `${userId}@mockmate.ai`,
         full_name: "Candidate",
         credits: 1, // 1 free interview on signup!
+        role: "user",
+        is_suspended: false,
+        is_deleted: false,
+        deleted_at: null,
         created_at: new Date().toISOString(),
       };
       this.profiles.set(userId, p);
     }
     return p;
+  }
+
+  getAllProfiles(): Profile[] {
+    return Array.from(this.profiles.values());
+  }
+
+  deleteProfile(userId: string): boolean {
+    return this.profiles.delete(userId);
+  }
+
+  softDeleteProfile(userId: string): Profile {
+    return this.updateProfile(userId, {
+      is_deleted: true,
+      is_suspended: true,
+      deleted_at: new Date().toISOString(),
+    });
+  }
+
+  restoreProfile(userId: string): Profile {
+    return this.updateProfile(userId, {
+      is_deleted: false,
+      is_suspended: false,
+      deleted_at: null,
+    });
   }
 
   updateProfile(userId: string, updates: Partial<Profile>): Profile {
@@ -182,6 +306,18 @@ class MockMateStore {
       .sort((a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime());
   }
 
+  getAllInterviews(): InterviewRecord[] {
+    return Array.from(this.interviews.values()).sort(
+      (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+    );
+  }
+
+  getAllPayments(): PaymentRecord[] {
+    return Array.from(this.payments.values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+  }
+
   // Messages
   addMessage(record: MessageRecord): void {
     const list = this.messages.get(record.interview_id) || [];
@@ -223,10 +359,29 @@ class MockMateStore {
   getPayment(orderId: string): PaymentRecord | undefined {
     return this.payments.get(orderId);
   }
+
+  // Integrity Events
+  addIntegrityEvent(record: IntegrityEventRecord): void {
+    const list = this.integrityEvents.get(record.interview_id) || [];
+    list.push(record);
+    this.integrityEvents.set(record.interview_id, list);
+  }
+
+  getIntegrityEvents(interviewId: string): IntegrityEventRecord[] {
+    return (this.integrityEvents.get(interviewId) || []).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+  }
+
+  getIntegritySummary(interviewId: string): IntegritySummary {
+    return calculateIntegritySummary(this.getIntegrityEvents(interviewId));
+  }
 }
 
-// Global singleton instance
+// Global singleton instance across all environments & Next.js chunks
 const globalForStore = globalThis as unknown as { mockMateStore: MockMateStore };
-export const appStore = globalForStore.mockMateStore || new MockMateStore();
-if (process.env.NODE_ENV !== "production") globalForStore.mockMateStore = appStore;
+if (!globalForStore.mockMateStore) {
+  globalForStore.mockMateStore = new MockMateStore();
+}
+export const appStore = globalForStore.mockMateStore;
 

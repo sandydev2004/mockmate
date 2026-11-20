@@ -2,6 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { appStore } from "@/lib/store";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+export const dynamic = "force-dynamic";
 import {
   TrendingUp,
   Award,
@@ -21,7 +24,24 @@ export default async function ProgressPage() {
     redirect("/login");
   }
   const userId = user.id;
-  const interviews = appStore.getUserInterviews(userId);
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  let interviews: any[] = [];
+  if (supabaseUrl && !supabaseUrl.includes("mockmate-demo")) {
+    try {
+      const supabase = createAdminClient();
+      const { data: dbInterviews } = await supabase
+        .from("interviews")
+        .select("*")
+        .eq("user_id", userId)
+        .order("started_at", { ascending: false });
+      interviews = dbInterviews || [];
+    } catch {
+      interviews = appStore.getUserInterviews(userId);
+    }
+  } else {
+    interviews = appStore.getUserInterviews(userId);
+  }
 
   // Scored interviews sorted by date ascending for line chart
   const completed = interviews
