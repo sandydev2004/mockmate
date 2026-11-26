@@ -44,12 +44,8 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
 
   const isLoggedIn = Boolean(userName || userEmail);
 
-  // Avoid double headers: Never render the candidate navbar on /admin routes
-  if (pathname?.startsWith("/admin")) {
-    return null;
-  }
-
   useEffect(() => {
+    if (pathname?.startsWith("/admin")) return;
     let isMounted = true;
     const fetchSession = async () => {
       try {
@@ -86,6 +82,11 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
       window.removeEventListener("auth-state-change", handleAuthChange);
     };
   }, [pathname]);
+
+  // Avoid double headers: Never render the candidate navbar on /admin routes
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   const handleLogout = async () => {
     try {
