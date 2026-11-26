@@ -28,6 +28,7 @@ import {
   Copy,
 } from "lucide-react";
 import { formatDate, getDifficultyBadgeColor, getRoleBadgeColor, getScoreColor } from "@/lib/utils";
+import { ShareScoreCard } from "@/components/ShareScoreCard";
 
 export default async function FeedbackReportPage({
   params,
@@ -205,6 +206,17 @@ export default async function FeedbackReportPage({
           </div>
         </div>
       </div>
+
+      {/* Shareable Placement Score Card */}
+      <ShareScoreCard
+        score={feedback.overall}
+        role={interview.role}
+        company={interview.target_company || interview.company_type}
+        round={interview.round}
+        difficulty={interview.difficulty}
+        date={feedback.created_at}
+        categoryScores={scoreCategories}
+      />
 
       {/* 4 Score Bars */}
       <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">

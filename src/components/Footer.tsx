@@ -1,7 +1,17 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Sparkles, Heart } from "lucide-react";
 
 export function Footer() {
+  const pathname = usePathname();
+
+  // Hide footer on admin operations pages
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
+
   return (
     <footer className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 py-12 text-slate-600 dark:text-slate-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

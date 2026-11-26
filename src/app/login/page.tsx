@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sparkles, ArrowRight, Mail, Lock, Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { Spinner, ButtonLoading } from "@/components/loading";
 
 function LoginContent() {
   const router = useRouter();
@@ -21,9 +22,29 @@ function LoginContent() {
     if (searchParams.get("verified") === "true") {
       setVerifiedNotice(true);
     }
-    const errParam = searchParams.get("error");
+    // Extract error from query params or URL hash fragment
+    let errParam =
+      searchParams.get("error_description") ||
+      searchParams.get("error") ||
+      searchParams.get("message");
+
+    if (!errParam && typeof window !== "undefined" && window.location.hash) {
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      errParam =
+        hashParams.get("error_description") ||
+        hashParams.get("error") ||
+        hashParams.get("message");
+    }
+
     if (errParam) {
-      setError(decodeURIComponent(errParam));
+      const decoded = decodeURIComponent(errParam.replace(/\+/g, " "));
+      if (decoded.includes("Database error saving new user")) {
+        setError(
+          "Account creation issue: The database trigger encountered a constraint error saving your profile. Please report this to the administrator or try logging in again."
+        );
+      } else {
+        setError(decoded);
+      }
     }
   }, [searchParams]);
 
@@ -75,7 +96,7 @@ function LoginContent() {
       setGoogleLoading(true);
       setError(null);
       const supabase = createClient();
-      const origin = window.location.origin;
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, "");
       const redirectTarget = searchParams.get("redirect") || searchParams.get("next");
       const redirectQuery =
         redirectTarget && redirectTarget.startsWith("/") && !redirectTarget.startsWith("//")
@@ -85,7 +106,7 @@ function LoginContent() {
       const { error: supaErr } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${origin}/auth/callback${redirectQuery}`,
+          redirectTo: `${appUrl}/auth/callback${redirectQuery}`,
         },
       });
 
@@ -177,20 +198,15 @@ function LoginContent() {
             </div>
           </div>
 
-          <button
+          <ButtonLoading
             type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+            loading={loading}
+            loadingText="Signing in..."
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all"
           >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>Log In</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            <span>Log In</span>
+            <ArrowRight className="w-4 h-4" />
+          </ButtonLoading>
         </form>
 
         <div className="relative">
@@ -210,7 +226,7 @@ function LoginContent() {
         >
           {googleLoading ? (
             <>
-              <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+              <Spinner size="sm" className="text-indigo-600" />
               <span>Connecting to Google...</span>
             </>
           ) : (
@@ -237,6 +253,10 @@ function LoginContent() {
             </>
           )}
         </button>
+
+        <p className="text-[11px] text-center text-slate-400 dark:text-slate-500">
+          New here? An account is created automatically with 1 free interview credit.
+        </p>
 
         <p className="text-center text-xs text-slate-500">
           Don't have an account yet?{" "}

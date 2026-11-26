@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import crypto from "crypto";
 import { getCurrentUser } from "@/lib/auth";
 import { appStore } from "@/lib/store";
-import Razorpay from "razorpay";
+import { getCreditPack, getRazorpayClient } from "@/lib/razorpay";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 const createOrderSchema = z.object({
-  pack_id: z.enum(["pack_3", "pack_10"]),
+  pack_id: z.string(),
 });
-
-const PACKS = {
-  pack_3: {
-    credits: 3,
-    amount: 9900, // Rs 99 in paise
-    title: "Starter Pack (3 Interviews)",
-  },
-  pack_10: {
-    credits: 10,
-    amount: 24900, // Rs 249 in paise
-    title: "Placement Pro Pack (10 Interviews)",
-  },
-};
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,66 +23,66 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid payment pack" }, { status: 400 });
     }
 
-    const pack = PACKS[validated.data.pack_id];
-    const keyId = process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const pack = getCreditPack(validated.data.pack_id);
+    if (!pack) {
+      return NextResponse.json({ error: "Unknown credit pack" }, { status: 400 });
+    }
 
-    const hasLiveRazorpay = Boolean(
-      keyId &&
-      keySecret &&
-      !keyId.includes("mockmate123456") &&
-      keyId.startsWith("rzp_")
-    );
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
+    const razorpay = getRazorpayClient();
 
-    let orderId = `order_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`;
+    let orderId: string;
 
-    if (hasLiveRazorpay) {
+    if (razorpay && keyId && !keyId.includes("mockmate123456")) {
       try {
-        const razorpay = new Razorpay({
-          key_id: keyId!,
-          key_secret: keySecret!,
-        });
-
         const rzpOrder = await razorpay.orders.create({
           amount: pack.amount,
           currency: "INR",
-          receipt: `rcpt_${Date.now()}`,
+          receipt: `rcpt_${user.id.slice(0, 8)}_${Date.now()}`,
           notes: {
             user_id: user.id,
-            pack_id: validated.data.pack_id,
-            credits: pack.credits,
+            pack_id: pack.id,
+            credits: pack.credits.toString(),
           },
         });
         orderId = rzpOrder.id;
       } catch (err: any) {
-        console.warn("Razorpay API error, falling back to test order:", err.message);
+        return NextResponse.json(
+          { error: "Razorpay order creation failed", details: err.message },
+          { status: 502 }
+        );
       }
+    } else {
+      orderId = `order_${crypto.randomUUID().replace(/-/g, "").slice(0, 14)}`;
     }
 
-    // Save pending payment record in store
-    appStore.savePayment({
+    const paymentRecord = {
       id: crypto.randomUUID(),
       user_id: user.id,
+      order_id: orderId,
       razorpay_order_id: orderId,
+      pack: pack.id,
       amount: pack.amount,
       credits_added: pack.credits,
-      status: "created",
+      status: "created" as const,
       created_at: new Date().toISOString(),
-    });
+    };
+
+    appStore.savePayment(paymentRecord);
+    try {
+      const supabase = createAdminClient();
+      await supabase.from("payments").insert(paymentRecord);
+    } catch {}
 
     return NextResponse.json({
       order_id: orderId,
       amount: pack.amount,
       currency: "INR",
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || keyId || "rzp_test_mockmate123456",
-      pack_title: pack.title,
+      key_id: keyId,
+      pack_title: pack.name,
       credits: pack.credits,
     });
-  } catch (error: any) {
-    console.error("[PAYMENT_CREATE_ORDER_ERROR]", error);
-    return NextResponse.json(
-      { error: "Failed to create payment order", details: error.message },
-      { status: 500 }
-    );
+  } catch (err: any) {
+    return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
   }
 }

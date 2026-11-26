@@ -13,6 +13,8 @@ import {
   ChevronRight,
   ExternalLink,
 } from "lucide-react";
+import { adminFetch } from "@/lib/admin-fetch";
+import { AdminErrorState } from "@/components/admin/AdminErrorState";
 
 interface InterviewRow {
   id: string;
@@ -43,6 +45,8 @@ export default function AdminInterviewsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -54,7 +58,8 @@ export default function AdminInterviewsPage() {
   const [adminTestFilter, setAdminTestFilter] = useState("all");
 
   const fetchInterviews = async () => {
-    setLoading(true);
+    if (interviews.length === 0) setLoading(true);
+    else setRetrying(true);
     setError(null);
     try {
       const params = new URLSearchParams({
@@ -69,21 +74,22 @@ export default function AdminInterviewsPage() {
       if (reviewedFilter !== "all") params.set("admin_reviewed", reviewedFilter);
       if (adminTestFilter !== "all") params.set("is_admin_test", adminTestFilter);
 
-      const res = await fetch(`/api/admin/interviews?${params.toString()}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error("Access denied or session unverified. Ensure your account has admin privileges and complete 2-step verification.");
-        }
-        throw new Error(`Failed to load interviews (HTTP ${res.status})`);
+      const result = await adminFetch<{ interviews: InterviewRow[]; total: number; totalPages: number }>(
+        `/api/admin/interviews?${params.toString()}`
+      );
+      if (result.error) {
+        setError(result.error);
+        setRequestId(result.requestId);
+      } else if (result.data) {
+        setInterviews(result.data.interviews || []);
+        setTotal(result.data.total || 0);
+        setTotalPages(result.data.totalPages || 1);
       }
-      const data = await res.json();
-      setInterviews(data.interviews || []);
-      setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
     } catch (err: any) {
       setError(err.message || "Failed to load interviews");
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -142,7 +148,7 @@ export default function AdminInterviewsPage() {
                 setRoundFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All Rounds</option>
               <option value="dsa">DSA</option>
@@ -160,7 +166,7 @@ export default function AdminInterviewsPage() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All</option>
               <option value="completed">Completed</option>
@@ -177,7 +183,7 @@ export default function AdminInterviewsPage() {
                 setRiskFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All Levels</option>
               <option value="high">High Risk</option>
@@ -194,7 +200,7 @@ export default function AdminInterviewsPage() {
                 setAutoSubmitFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All</option>
               <option value="true">Yes</option>
@@ -210,7 +216,7 @@ export default function AdminInterviewsPage() {
                 setReviewedFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All</option>
               <option value="true">Reviewed</option>
@@ -226,7 +232,7 @@ export default function AdminInterviewsPage() {
                 setAdminTestFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All Sessions</option>
               <option value="false">Candidate Interviews</option>
@@ -238,29 +244,17 @@ export default function AdminInterviewsPage() {
 
       {/* Table or Error */}
       {error ? (
-        <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-xl space-y-4">
-          <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
-          <h2 className="text-base font-semibold text-white">Failed to Load Interviews</h2>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">{error}</p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={fetchInterviews}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
-            >
-              Try Again
-            </button>
-            <Link
-              href="/admin/mfa"
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-            >
-              Verify 2-Step Login (MFA)
-            </Link>
-          </div>
-        </div>
+        <AdminErrorState
+          title="Failed to Load Interviews"
+          error={error}
+          requestId={requestId}
+          onRetry={fetchInterviews}
+          isRetrying={retrying}
+        />
       ) : (
-      <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+        <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="p-4">Candidate</th>

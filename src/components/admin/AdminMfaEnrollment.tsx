@@ -16,15 +16,18 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import Link from "next/link";
+import { Spinner, ButtonLoading } from "@/components/loading";
 
 interface AdminMfaEnrollmentProps {
   userEmail: string;
   userRole: string;
+  redirectPath?: string;
 }
 
 export function AdminMfaEnrollment({
   userEmail,
   userRole,
+  redirectPath = "/admin",
 }: AdminMfaEnrollmentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -52,8 +55,8 @@ export function AdminMfaEnrollment({
       if (aalData?.currentLevel === "aal2") {
         setSuccess(true);
         setTimeout(() => {
-          window.location.href = "/admin";
-        }, 1200);
+          window.location.href = redirectPath;
+        }, 800);
         return;
       }
 
@@ -71,6 +74,15 @@ export function AdminMfaEnrollment({
         setFactorId(verifiedFactor.id);
         setLoading(false);
         return;
+      }
+
+      // Clean up any stale unverified factors before starting new enrollment
+      if (factorsData?.all) {
+        for (const factor of factorsData.all) {
+          if (factor.status === "unverified") {
+            await supabase.auth.mfa.unenroll({ factorId: factor.id }).catch(() => {});
+          }
+        }
       }
 
       // No verified factor enrolled: start enrollment
@@ -119,6 +131,36 @@ export function AdminMfaEnrollment({
     }
   };
 
+  const handleUnenrollAndReEnroll = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to re-enroll? This will remove existing factors and generate a new QR code for Google Authenticator."
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const supabase = createClient();
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      if (factorsData?.all) {
+        for (const factor of factorsData.all) {
+          await supabase.auth.mfa.unenroll({ factorId: factor.id }).catch(() => {});
+        }
+      }
+      setIsExistingFactor(false);
+      setFactorId(null);
+      setQrCodeSvg(null);
+      setSecretKey(null);
+      setVerifyCode("");
+      await initMfa();
+    } catch (err: any) {
+      setError(err.message || "Failed to reset authenticator factor");
+      setLoading(false);
+    }
+  };
+
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanCode = verifyCode.replace(/\s+/g, "").trim();
@@ -149,18 +191,13 @@ export function AdminMfaEnrollment({
 
       setSuccess(true);
       setTimeout(() => {
-        window.location.href = "/admin";
+        window.location.href = redirectPath;
       }, 1000);
     } catch (err: any) {
       setError(err.message || "Verification failed");
     } finally {
       setVerifying(false);
     }
-  };
-
-  const handleDevBypass = async () => {
-    // Quick reload for test environments
-    window.location.href = "/admin";
   };
 
   return (
@@ -197,8 +234,8 @@ export function AdminMfaEnrollment({
 
         {/* Loading State */}
         {loading && !success && (
-          <div className="py-12 text-center space-y-3">
-            <RefreshCw className="w-6 h-6 text-indigo-400 animate-spin mx-auto" />
+          <div className="py-12 text-center space-y-3" role="status" aria-busy="true">
+            <Spinner size="lg" className="text-indigo-400 mx-auto" />
             <p className="text-xs text-slate-400">Initializing authenticator security handshake...</p>
           </div>
         )}
@@ -221,8 +258,9 @@ export function AdminMfaEnrollment({
             </ol>
             <div className="pt-2 flex items-center gap-2">
               <button
+                type="button"
                 onClick={initMfa}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                className="min-h-[44px] px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors"
               >
                 I Enabled It, Retry
               </button>
@@ -232,9 +270,38 @@ export function AdminMfaEnrollment({
 
         {/* Error message */}
         {error && !totpDisabledInSupabase && (
-          <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>{error}</span>
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+            {!qrCodeSvg && !isExistingFactor && (
+              <button
+                type="button"
+                onClick={initMfa}
+                className="inline-flex items-center justify-center gap-2 min-h-[44px] px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Retry Setup
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Fallback prompt if enrollment returned without QR code or factor */}
+        {!loading && !success && !isExistingFactor && !qrCodeSvg && !totpDisabledInSupabase && !error && (
+          <div className="text-center py-6 space-y-4">
+            <p className="text-xs text-slate-400">
+              Ready to configure your authenticator device for two-step security.
+            </p>
+            <button
+              type="button"
+              onClick={initMfa}
+              className="inline-flex items-center justify-center gap-2 min-h-[44px] px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs transition-colors shadow-sm"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Generate Authenticator QR Code</span>
+            </button>
           </div>
         )}
 
@@ -244,17 +311,30 @@ export function AdminMfaEnrollment({
             {/* Step 1: Scan QR Code */}
             <div className="space-y-2 text-center">
               <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider block">
-                1. Scan with Authenticator App
+                1. Scan QR Code with Google Authenticator
               </span>
-              <p className="text-xs text-slate-400">
-                Google Authenticator, Microsoft Authenticator, 1Password, or Authy.
+              <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                Open <strong className="text-white">Google Authenticator</strong> (or any TOTP app), tap the <strong className="text-white">(+)</strong> button, and choose <strong className="text-indigo-400">Scan a QR code</strong>.
               </p>
               <div className="p-3 bg-white rounded-xl inline-block shadow-md">
-                <img
-                  src={qrCodeSvg}
-                  alt="MFA QR Code"
-                  className="w-44 h-44 mx-auto"
-                />
+                {qrCodeSvg.includes("<svg") ? (
+                  <div
+                    className="w-48 h-48 mx-auto flex items-center justify-center [&>svg]:w-full [&>svg]:h-full"
+                    dangerouslySetInnerHTML={{
+                      __html: qrCodeSvg.slice(qrCodeSvg.indexOf("<svg")),
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={
+                      qrCodeSvg.startsWith("data:")
+                        ? qrCodeSvg
+                        : `data:image/svg+xml;utf-8,${encodeURIComponent(qrCodeSvg)}`
+                    }
+                    alt="Google Authenticator QR Code"
+                    className="w-48 h-48 mx-auto"
+                  />
+                )}
               </div>
             </div>
 
@@ -294,13 +374,15 @@ export function AdminMfaEnrollment({
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-center text-xl font-mono tracking-widest text-white placeholder-slate-600 focus:outline-none focus:border-indigo-500"
                 autoFocus
               />
-              <button
+              <ButtonLoading
                 type="submit"
-                disabled={verifying || verifyCode.length < 6}
-                className="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white transition-colors"
+                loading={verifying}
+                loadingText="Verifying Code..."
+                disabled={verifyCode.length < 6}
+                className="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
               >
-                {verifying ? "Verifying Code..." : "Verify & Enable 2-Step Login"}
-              </button>
+                <span>Verify & Enable 2-Step Login</span>
+              </ButtonLoading>
             </form>
           </div>
         )}
@@ -325,21 +407,23 @@ export function AdminMfaEnrollment({
               autoFocus
             />
 
-            <button
+            <ButtonLoading
               type="submit"
-              disabled={verifying || verifyCode.length < 6}
-              className="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white transition-colors"
+              loading={verifying}
+              loadingText="Verifying..."
+              disabled={verifyCode.length < 6}
+              className="w-full py-2.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
             >
-              {verifying ? "Verifying..." : "Verify & Access Admin Panel"}
-            </button>
+              <span>Verify & Access Admin Panel</span>
+            </ButtonLoading>
 
             <div className="text-center pt-2">
               <button
                 type="button"
-                onClick={initMfa}
-                className="text-xs text-slate-500 hover:text-slate-400 underline"
+                onClick={handleUnenrollAndReEnroll}
+                className="text-xs text-indigo-400 hover:text-indigo-300 underline"
               >
-                Reset / Re-enroll new authenticator device
+                Scan a new QR code with Google Authenticator (Re-enroll)
               </button>
             </div>
           </form>

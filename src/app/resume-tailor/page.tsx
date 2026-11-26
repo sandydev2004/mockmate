@@ -16,6 +16,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { ResumeRecord, TailorResult } from "@/types";
+import { Spinner, ButtonLoading } from "@/components/loading";
 
 export default function ResumeTailorPage() {
   const [savedResumes, setSavedResumes] = useState<ResumeRecord[]>([]);
@@ -205,11 +206,16 @@ Job Requirements:
               <span>Step 1: Select or Upload Resume</span>
             </label>
             <label className="cursor-pointer text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1">
-              <Upload className="w-3.5 h-3.5" />
-              <span>{uploading ? "Uploading..." : "Upload New PDF"}</span>
+              {uploading ? (
+                <Spinner size="sm" className="text-indigo-600" />
+              ) : (
+                <Upload className="w-3.5 h-3.5" />
+              )}
+              <span>{uploading ? "Extracting text from resume..." : "Upload New PDF"}</span>
               <input
                 type="file"
                 accept=".pdf,application/pdf"
+                disabled={uploading}
                 onChange={handlePdfUpload}
                 className="hidden"
               />
@@ -271,14 +277,16 @@ Job Requirements:
             />
           </div>
 
-          <button
+          <ButtonLoading
             type="submit"
-            disabled={loading || !jobDescription.trim()}
-            className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            loading={loading}
+            loadingText="Analyzing ATS Match..."
+            disabled={!jobDescription.trim()}
+            className="w-full py-3.5 px-4 rounded-xl font-bold text-sm bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-md shadow-indigo-500/20 transition-all flex items-center justify-center gap-2"
           >
             <Wand2 className="w-4 h-4" />
-            <span>{loading ? "Analyzing ATS Match..." : "Tailor Resume & Calculate Match Score"}</span>
-          </button>
+            <span>Tailor Resume & Calculate Match Score</span>
+          </ButtonLoading>
         </div>
       </form>
 

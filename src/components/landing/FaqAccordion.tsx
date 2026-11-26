@@ -15,37 +15,37 @@ const FAQS: FaqItem[] = [
     id: "faq-free",
     question: "Is it really free?",
     answer:
-      "Yes. Every new candidate gets 1 full mock interview credit on registration with complete access to real AI interviewers, live code compiler, and an in-depth score report. No credit card or payment info is ever required to practice.",
+      "Yes, completely! Every new engineering student gets 1 free full-length mock interview credit right upon signup. You get full access to the AI interviewer, live code editor, proctoring simulation, and the complete 100-point performance feedback report. No credit card, debit card, or UPI details are ever asked.",
   },
   {
     id: "faq-camera",
     question: "Do I need a camera?",
     answer:
-      "Only if you choose Proctored mode to simulate strict placement portal conditions (like TCS iON or Mercer Mettl). If you prefer practicing casually or don't have a webcam, simply toggle Practice mode, which requires zero camera and no fullscreen enforcement. In Proctored mode, video is analyzed 100% locally on your device — video is never uploaded or saved.",
+      "No, a camera is never mandatory! You can choose between two modes before starting: 1) Practice Mode: 100% camera-free and relaxed, with no fullscreen locks — perfect for quick practice in your hostel room or on mobile. 2) Proctored Mode: Simulates strict campus test conditions (like TCS iON or Mercer Mettl). Even in Proctored Mode, face and presence detection is processed purely on-device inside your browser. Your camera video is NEVER recorded, uploaded, or stored on our servers.",
   },
   {
     id: "faq-resume",
     question: "Is my resume safe?",
     answer:
-      "Absolutely. Your resume is parsed strictly in memory to extract your listed projects and technical skills so the AI can ask relevant cross-questions. Your data is encrypted, never shared or sold, and you can delete your uploaded resumes and past interview logs anytime.",
+      "100% safe and private. When you upload your resume (PDF), our parser strictly extracts your listed projects, technical skills, and internships in memory so the AI interviewer can ask relevant cross-questions — exactly like a real hiring manager would. Your resume data is encrypted, never shared or sold to third-party recruiters, and you can delete your uploaded resumes and interview logs anytime with one click.",
   },
   {
     id: "faq-rounds",
     question: "Which companies and rounds are covered?",
     answer:
-      "MockMate covers SDE, Data/ML, and Core engineering placements across service companies (TCS, Infosys, Wipro, Cognizant), product firms (Amazon, Swiggy, Flipkart), and fast-growing tech startups. We support DSA Coding, CS Fundamentals (OS/DBMS/CN), System Design, and HR Behavioral rounds.",
+      "MockMate covers tailored interview styles across both Service and Product company hiring patterns: Service Giants (TCS NQT/Digital, Infosys DSE/SP, Wipro Turbo, Cognizant GenC), Tier-1 Product Companies (Amazon, Microsoft, Swiggy), and High-growth Tech Startups (CRED, Zepto, Razorpay). We support DSA Coding rounds (with in-browser compilation), CS Fundamentals (OS, DBMS, Networks, OOPs), System Design (HLD/LLD), and HR / Behavioral rounds (STAR framework).",
   },
   {
     id: "faq-mobile",
     question: "Does it work on mobile?",
     answer:
-      "Yes. MockMate is built mobile-first. You can take conversational and conceptual interviews, dictate code solutions via voice or text, and review detailed placement reports right from your smartphone.",
+      "Yes! MockMate is designed mobile-first. You can comfortably take conversational CS fundamentals and HR rounds directly from your smartphone browser (Chrome, Safari, Brave). You can type or use voice dictation to answer questions, and view your interactive scorecards anywhere. For hands-on coding rounds, a laptop is recommended for typing code, but you can still practice problem analysis and logic on phone.",
   },
   {
     id: "faq-hinglish",
     question: "Can I practice in Hinglish?",
     answer:
-      "Yes. While professional campus interviews typically use English, the AI interviewer understands natural bilingual technical Hinglish commonly spoken by Indian engineering students. You can ask for problem clarifications or explain your logic in Hinglish without being penalized.",
+      "Haan bilkul! Indian campus placement drives mein interviewer technical concepts test karte hain, na ki Shakespearean English. MockMate's AI interviewer is trained to understand everyday technical Hinglish (e.g., 'Maine pehle brute force socha, fir hashmap se O(n) optimize kiya'). You can speak or type in English or Hinglish without any penalty — our evaluation focuses on your problem-solving logic, communication clarity, and core concepts.",
   },
 ];
 

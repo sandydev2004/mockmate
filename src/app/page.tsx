@@ -64,50 +64,50 @@ export default async function LandingPage() {
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "Is the first mock interview completely free?",
+            "name": "Is it really free?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes! Every new account gets 1 free full-length mock interview with an instant score and feedback report. No credit or debit card is needed."
+              "text": "Yes, completely! Every new engineering student gets 1 free full-length mock interview credit right upon signup. You get full access to the AI interviewer, live code editor, proctoring simulation, and the complete 100-point performance feedback report. No credit card, debit card, or UPI details are ever asked."
             }
           },
           {
             "@type": "Question",
-            "name": "Will my camera video be recorded or uploaded to a server?",
+            "name": "Do I need a camera?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No. When Proctored Mode is enabled, face and presence verification is processed purely on-device in your browser. Video streams are never sent to or stored on our servers. You can also pick Practice Mode to keep the camera completely off."
+              "text": "No, a camera is never mandatory! You can choose between two modes: Practice Mode (100% camera-free, relaxed) or Proctored Mode (simulates strict placement tests like TCS iON). Even in Proctored Mode, face and presence detection is processed purely on-device in your browser. Video is never recorded, uploaded, or stored on servers."
             }
           },
           {
             "@type": "Question",
-            "name": "Can I answer in Hinglish or everyday English?",
+            "name": "Is my resume safe?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes. Our AI understands natural conversational English, Hinglish, and technical terminology typical in Indian campus drives."
+              "text": "100% safe and private. When you upload your resume (PDF), our parser strictly extracts your listed projects and technical skills in memory so the AI interviewer can ask relevant cross-questions. Your data is encrypted, never shared or sold, and you can delete your uploaded resumes and interview logs anytime."
             }
           },
           {
             "@type": "Question",
-            "name": "Which companies and roles can I practice for?",
+            "name": "Which companies and rounds are covered?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "You can prepare for Service companies (TCS NQT, Infosys, Wipro, Cognizant, Accenture) and Product companies (Amazon, Microsoft, startups, fintechs) across SDE, Data Analyst, QA, and Core CS roles."
+              "text": "MockMate covers Service Giants (TCS NQT/Digital, Infosys DSE/SP, Wipro Turbo, Cognizant GenC), Tier-1 Product Companies (Amazon, Microsoft, Swiggy), and Tech Startups (CRED, Zepto, Razorpay). We support DSA Coding, CS Fundamentals (OS/DBMS/CN), System Design (HLD/LLD), and HR / Behavioral rounds (STAR framework)."
             }
           },
           {
             "@type": "Question",
-            "name": "What kind of feedback do I get after the interview?",
+            "name": "Does it work on mobile?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "You receive an instant 100-point composite score, breakdowns in Problem Solving, Communication, and CS Fundamentals, question-by-question critique, and an actionable improvement checklist."
+              "text": "Yes! MockMate is designed mobile-first. You can comfortably take conversational CS fundamentals and HR rounds directly from your smartphone browser (Chrome, Safari, Brave), using voice dictation or text, and view your scorecards anywhere."
             }
           },
           {
             "@type": "Question",
-            "name": "How do credits work if I want to practice more?",
+            "name": "Can I practice in Hinglish?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "1 credit equals 1 complete interview with evaluation. After your free trial, you can purchase packs starting at ₹99 for 3 interviews or ₹249 for 10 interviews. Credits never expire."
+              "text": "Haan bilkul! Indian campus placement interviewers test technical concepts, not Shakespearean English. MockMate's AI understands natural technical Hinglish. You can speak or type in English or Hinglish without penalty — evaluation focuses on problem-solving logic and core concepts."
             }
           }
         ]

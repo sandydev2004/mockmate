@@ -185,38 +185,43 @@ export interface VerifyAdminResult {
   needsMfaEnrollment?: boolean;
 }
 
+export type VerifyAdminApiResult =
+  | { success: true; user: CurrentUser; needsMfa: false }
+  | { success: false; needsMfa: true; user: CurrentUser }
+  | { success: false; needsMfa: false; user: null };
+
 /**
  * Server-side helper for API routes:
  * Strictly verifies role (support, admin, super_admin), active status, IP allowlist, MFA/AAL2 status, and lockout.
- * Returns 404 Not Found on unauthorized/unauthenticated access to prevent reconnaissance.
+ * Returns structured result indicating success, MFA requirement, or denial.
  * Logs exact failure reason on the server console only.
  */
-export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | null> {
+export async function verifyAdminApiDetailed(req: NextRequest): Promise<VerifyAdminApiResult> {
   const ip = getClientIp(req);
   const path = req.nextUrl?.pathname || req.url;
 
   // 1. IP allowlist check
   if (!isIpAllowed(ip, req)) {
     logAdminDenial("IP not in allowed list (ADMIN_ALLOWED_IPS)", { ip, path });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   // 2. Lockout check
   if (isLockedOut(ip)) {
     logAdminDenial("IP temporarily locked out after repeated failed attempts", { ip, path });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   // 3. Rate limit check
   if (!checkAdminRateLimit(ip)) {
     logAdminDenial("Rate limit exceeded for IP", { ip, path });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   // 4. CSRF / Origin check
   if (!verifyOrigin(req)) {
     logAdminDenial("CSRF origin/host check failed", { ip, path });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   // 5. Test header simulation for non-production environments
@@ -228,20 +233,15 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
 
     if (!isAdminRole(role)) {
       logAdminDenial(`Test header role '${role}' is not an admin role`, { ip, path, role });
-      return null;
+      return { success: false, needsMfa: false, user: null };
     }
 
     if (isSuspended) {
       logAdminDenial("Test user is suspended", { ip, path, role });
-      return null;
+      return { success: false, needsMfa: false, user: null };
     }
 
-    if (!mfaEnrolled || aal !== "aal2") {
-      logAdminDenial(`Test user session not AAL2 (enrolled: ${mfaEnrolled}, aal: ${aal})`, { ip, path, role, aal });
-      return null;
-    }
-
-    return {
+    const testUser: CurrentUser = {
       id: req.headers.get("x-test-auth-id") || "admin-system-user-01",
       email: req.headers.get("x-test-auth-email") || "operations@mockmate.internal",
       full_name: "MockMate System Admin",
@@ -249,18 +249,25 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
       role,
       is_suspended: false,
     };
+
+    if (!mfaEnrolled || aal !== "aal2") {
+      logAdminDenial(`Test user session not AAL2 (enrolled: ${mfaEnrolled}, aal: ${aal})`, { ip, path, role, aal });
+      return { success: false, needsMfa: true, user: testUser };
+    }
+
+    return { success: true, user: testUser, needsMfa: false };
   }
 
   // 6. Live Supabase Session & Role validation (using getUser() server-side)
   const user = await getCurrentUser();
   if (!user) {
     logAdminDenial("No active Supabase session / unauthenticated request", { ip, path });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   if (user.is_suspended) {
     logAdminDenial("Admin account is suspended", { ip, path, userId: user.id, email: user.email, role: user.role });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   if (!isAdminRole(user.role)) {
@@ -271,7 +278,7 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
       email: user.email,
       role: user.role,
     });
-    return null;
+    return { success: false, needsMfa: false, user: null };
   }
 
   // 7. Verify MFA (Supabase TOTP) & Assurance Level (AAL2)
@@ -287,7 +294,7 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
         role: user.role,
         error: aalErr,
       });
-      return null;
+      return { success: false, needsMfa: true, user };
     }
 
     if (aalData?.currentLevel !== "aal2") {
@@ -302,7 +309,7 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
           aal: aalData?.currentLevel,
         }
       );
-      return null;
+      return { success: false, needsMfa: true, user };
     }
   } catch (err: any) {
     logAdminDenial("Exception during Supabase MFA assurance level check", {
@@ -313,10 +320,15 @@ export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | nu
       role: user.role,
       error: err,
     });
-    return null;
+    return { success: false, needsMfa: true, user };
   }
 
-  return user;
+  return { success: true, user, needsMfa: false };
+}
+
+export async function verifyAdminApi(req: NextRequest): Promise<CurrentUser | null> {
+  const result = await verifyAdminApiDetailed(req);
+  return result.success ? result.user : null;
 }
 
 /**
@@ -352,8 +364,30 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
     notFound();
   }
 
-  // The MFA setup page itself must be accessible to unenrolled admins so they can enroll!
-  if (currentPath === "/admin/mfa") {
+  // Detect whether caller is on or targeting /admin/mfa across currentPath and all server headers
+  let detectedPath = currentPath || "";
+  try {
+    const headersList = headers();
+    detectedPath =
+      currentPath ||
+      headersList.get("x-mockmate-path") ||
+      headersList.get("x-invoke-path") ||
+      headersList.get("next-url") ||
+      headersList.get("x-matched-path") ||
+      "";
+    const referer = headersList.get("referer") || "";
+    if (!detectedPath && referer.includes("/admin/mfa")) {
+      detectedPath = "/admin/mfa";
+    }
+  } catch {}
+
+  const isMfaTarget =
+    detectedPath === "/admin/mfa" ||
+    detectedPath.startsWith("/admin/mfa") ||
+    detectedPath.includes("/mfa");
+
+  // If already on or targeting MFA page, allow rendering immediately without loop!
+  if (isMfaTarget) {
     return user;
   }
 
@@ -366,17 +400,24 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
         const aal = headersList.get("x-test-auth-aal") || "aal2";
         if (!mfa || aal !== "aal2") {
           logAdminDenial(`Test session is at '${aal}' (enrolled: ${mfa}). Redirecting to /admin/mfa`, {
-            path: currentPath,
+            path: detectedPath,
             userId: user.id,
             email: user.email,
             role: user.role,
             aal,
           });
-          redirect("/admin/mfa");
+          const redirectTarget = detectedPath && detectedPath !== "/admin/mfa" && !detectedPath.includes("/mfa")
+            ? `/admin/mfa?redirect=${encodeURIComponent(detectedPath)}`
+            : "/admin/mfa";
+          redirect(redirectTarget);
         }
         return user;
       }
-    } catch {}
+    } catch (err: any) {
+      if (err?.digest?.startsWith("NEXT_REDIRECT")) {
+        throw err;
+      }
+    }
   }
 
   // Live Supabase MFA verification
@@ -387,7 +428,7 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
       logAdminDenial(
         `Session is at '${aalData?.currentLevel || "aal1"}', AAL2 required. Redirecting admin to /admin/mfa`,
         {
-          path: currentPath,
+          path: detectedPath,
           userId: user.id,
           email: user.email,
           role: user.role,
@@ -395,14 +436,17 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
           error: aalErr,
         }
       );
-      redirect("/admin/mfa");
+      const redirectTarget = detectedPath && detectedPath !== "/admin/mfa" && !detectedPath.includes("/mfa")
+        ? `/admin/mfa?redirect=${encodeURIComponent(detectedPath)}`
+        : "/admin/mfa";
+      redirect(redirectTarget);
     }
   } catch (err: any) {
     if (err?.digest?.startsWith("NEXT_REDIRECT")) {
       throw err;
     }
     logAdminDenial("Exception querying MFA assurance level in requireAdminPage", {
-      path: currentPath,
+      path: detectedPath,
       userId: user.id,
       email: user.email,
       role: user.role,
@@ -429,29 +473,50 @@ export function withAdminApi(
   }
 ) {
   return async (req: NextRequest) => {
-    const adminUser = await verifyAdminApi(req);
+    const requestId = `req_${crypto.randomUUID().slice(0, 8)}`;
+    const path = req.nextUrl?.pathname || req.url;
+    const authResult = await verifyAdminApiDetailed(req);
 
-    if (!adminUser) {
-      // Strict 404 masking: non-admins and unverified admins receive 404
-      const res = NextResponse.json({ error: "Not Found" }, { status: 404 });
+    if (!authResult.success) {
+      if (authResult.needsMfa) {
+        console.warn(
+          `[ADMIN_API_MFA_REQUIRED] [${requestId}] [MFA_REQUIRED] path=${path} user=${authResult.user.email} status=403`
+        );
+        const res = NextResponse.json(
+          {
+            error: "2-Step verification (MFA/AAL2) required",
+            code: "MFA_REQUIRED",
+            mfa_required: true,
+            redirect: "/admin/mfa",
+            request_id: requestId,
+          },
+          { status: 403 }
+        );
+        return applyAdminSecurityHeaders(res);
+      }
+
+      // Strict 404 masking: non-admins and unauthenticated receive 404 with request ID
+      console.warn(`[ADMIN_API_DENIED] [${requestId}] [ADMIN_404] path=${path} status=404`);
+      const res = NextResponse.json(
+        { error: "Not Found", code: "ADMIN_404", request_id: requestId },
+        { status: 404 }
+      );
       return applyAdminSecurityHeaders(res);
     }
+
+    const adminUser = authResult.user;
 
     // Role / Permission check
     if (options?.requiredPermission) {
       if (!hasPermission(adminUser.role, options.requiredPermission)) {
-        logAdminDenial(
-          `Admin role '${adminUser.role}' lacks required permission '${options.requiredPermission}'`,
-          {
-            path: req.nextUrl?.pathname || req.url,
-            userId: adminUser.id,
-            email: adminUser.email,
-            role: adminUser.role,
-          }
+        console.warn(
+          `[ADMIN_API_FORBIDDEN] [${requestId}] [ADMIN_403] path=${path} role=${adminUser.role} requiredPerm=${options.requiredPermission}`
         );
         const res = NextResponse.json(
           {
             error: "Forbidden",
+            code: "ADMIN_403",
+            request_id: requestId,
             message: `Your role (${adminUser.role}) does not have permission '${options.requiredPermission}'`,
           },
           { status: 403 }
@@ -462,17 +527,19 @@ export function withAdminApi(
 
     try {
       const response = await handler(adminUser, req);
+      response.headers.set("x-request-id", requestId);
       return applyAdminSecurityHeaders(response);
     } catch (err: any) {
-      logAdminDenial("Database, RLS, or unexpected internal server error in admin handler", {
-        path: req.nextUrl?.pathname || req.url,
-        userId: adminUser.id,
-        email: adminUser.email,
-        role: adminUser.role,
-        error: err,
-      });
+      console.error(
+        `[ADMIN_API_ERROR] [${requestId}] [ADMIN_500] path=${path} status=500 error=${err.message || err}`
+      );
       const res = NextResponse.json(
-        { error: "Internal Server Error", message: err.message, stack: err.stack },
+        {
+          error: "Internal Server Error",
+          code: "ADMIN_500",
+          request_id: requestId,
+          message: err.message || "An administrative server operation failed",
+        },
         { status: 500 }
       );
       return applyAdminSecurityHeaders(res);

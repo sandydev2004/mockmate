@@ -25,31 +25,33 @@ import {
   CartesianGrid,
 } from "recharts";
 import { AdminStats } from "@/types";
+import { adminFetch } from "@/lib/admin-fetch";
+import { AdminErrorState } from "@/components/admin/AdminErrorState";
 
 export default function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
 
   const fetchStats = async () => {
-    setLoading(true);
+    if (!stats) setLoading(true);
+    else setRetrying(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/overview");
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error(
-            "Access denied or session unverified. If you are an administrator, your session may require 2-step verification (MFA/AAL2)."
-          );
-        }
-        throw new Error(`Server returned HTTP ${res.status}`);
+      const result = await adminFetch<AdminStats>("/api/admin/overview");
+      if (result.error) {
+        setError(result.error);
+        setRequestId(result.requestId);
+      } else {
+        setStats(result.data);
       }
-      const data = await res.json();
-      setStats(data);
     } catch (err: any) {
       setError(err.message || "Failed to load overview");
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -73,25 +75,13 @@ export default function AdminOverviewPage() {
 
   if (error || !stats) {
     return (
-      <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-xl space-y-4">
-        <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
-        <h2 className="text-base font-semibold text-white">Failed to Load Overview Data</h2>
-        <p className="text-xs text-slate-400 max-w-md mx-auto">{error}</p>
-        <div className="flex items-center justify-center gap-3 pt-2">
-          <button
-            onClick={fetchStats}
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-white transition-colors"
-          >
-            Try Again
-          </button>
-          <Link
-            href="/admin/mfa"
-            className="px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-          >
-            Verify 2-Step Login (MFA)
-          </Link>
-        </div>
-      </div>
+      <AdminErrorState
+        title="Failed to Load Overview Data"
+        error={error || "Overview data could not be retrieved."}
+        requestId={requestId}
+        onRetry={fetchStats}
+        isRetrying={retrying}
+      />
     );
   }
 

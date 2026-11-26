@@ -2,11 +2,18 @@ import { getCurrentUser } from "@/lib/auth";
 import { isAdminRole } from "@/lib/admin-permissions";
 import { notFound } from "next/navigation";
 import { AdminMfaEnrollment } from "@/components/admin/AdminMfaEnrollment";
+import { MfaErrorBoundary } from "@/components/admin/MfaErrorBoundary";
 import { logAdminDenial } from "@/lib/admin-auth";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminMfaPage() {
+interface PageProps {
+  searchParams?: {
+    redirect?: string;
+  };
+}
+
+export default async function AdminMfaPage({ searchParams }: PageProps) {
   const user = await getCurrentUser();
 
   // Strict 404 masking: outsiders and non-admins receive a plain 404
@@ -20,10 +27,15 @@ export default async function AdminMfaPage() {
     notFound();
   }
 
+  const redirectPath = searchParams?.redirect || "/admin";
+
   return (
-    <AdminMfaEnrollment
-      userEmail={user.email}
-      userRole={user.role}
-    />
+    <MfaErrorBoundary>
+      <AdminMfaEnrollment
+        userEmail={user.email}
+        userRole={user.role}
+        redirectPath={redirectPath}
+      />
+    </MfaErrorBoundary>
   );
 }

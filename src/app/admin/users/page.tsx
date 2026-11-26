@@ -16,6 +16,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { adminFetch } from "@/lib/admin-fetch";
+import { AdminErrorState } from "@/components/admin/AdminErrorState";
 
 interface UserItem {
   id: string;
@@ -40,6 +42,8 @@ export default function AdminUsersPage() {
   const [roleFilter, setRoleFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
 
   // Credit adjustment modal state
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
@@ -52,7 +56,8 @@ export default function AdminUsersPage() {
   const [suspendUserTarget, setSuspendUserTarget] = useState<UserItem | null>(null);
 
   const fetchUsers = async () => {
-    setLoading(true);
+    if (users.length === 0) setLoading(true);
+    else setRetrying(true);
     setError(null);
     try {
       const params = new URLSearchParams({
@@ -63,23 +68,22 @@ export default function AdminUsersPage() {
       });
       if (search) params.set("q", search);
 
-      const res = await fetch(`/api/admin/users?${params.toString()}`);
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error(
-            "Access denied or session unverified. If you are an administrator, your session may require 2-step verification (MFA/AAL2)."
-          );
-        }
-        throw new Error(`Failed to load users (Server returned HTTP ${res.status})`);
+      const result = await adminFetch<{ users: UserItem[]; total: number; totalPages: number }>(
+        `/api/admin/users?${params.toString()}`
+      );
+      if (result.error) {
+        setError(result.error);
+        setRequestId(result.requestId);
+      } else if (result.data) {
+        setUsers(result.data.users || []);
+        setTotal(result.data.total || 0);
+        setTotalPages(result.data.totalPages || 1);
       }
-      const data = await res.json();
-      setUsers(data.users || []);
-      setTotal(data.total || 0);
-      setTotalPages(data.totalPages || 1);
     } catch (err: any) {
       setError(err.message || "Failed to load users");
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -165,7 +169,7 @@ export default function AdminUsersPage() {
 
       {/* Filters & Search */}
       <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
-        <form onSubmit={handleSearchSubmit} className="flex-1 flex gap-2">
+        <form onSubmit={handleSearchSubmit} className="flex-1 flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -173,18 +177,18 @@ export default function AdminUsersPage() {
               placeholder="Search by candidate name or email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
           <button
             type="submit"
-            className="px-4 py-2 rounded-lg text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
+            className="min-h-[44px] px-5 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors"
           >
             Search
           </button>
         </form>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 text-xs text-slate-400">
             <Filter className="w-3.5 h-3.5" />
             <span>Status:</span>
@@ -194,7 +198,7 @@ export default function AdminUsersPage() {
                 setStatusFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All Statuses</option>
               <option value="active">Active Only</option>
@@ -210,7 +214,7 @@ export default function AdminUsersPage() {
                 setRoleFilter(e.target.value);
                 setPage(1);
               }}
-              className="bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+              className="min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
             >
               <option value="all">All Roles</option>
               <option value="user">Users</option>
@@ -222,29 +226,17 @@ export default function AdminUsersPage() {
 
       {/* Users Table or Error State */}
       {error ? (
-        <div className="p-8 text-center bg-slate-900 border border-slate-800 rounded-xl space-y-4">
-          <AlertCircle className="w-8 h-8 text-rose-500 mx-auto" />
-          <h2 className="text-base font-semibold text-white">Failed to Load Candidate Accounts</h2>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">{error}</p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={fetchUsers}
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-colors"
-            >
-              Try Again
-            </button>
-            <Link
-              href="/admin/mfa"
-              className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
-            >
-              Verify 2-Step Login (MFA)
-            </Link>
-          </div>
-        </div>
+        <AdminErrorState
+          title="Failed to Load Candidate Accounts"
+          error={error}
+          requestId={requestId}
+          onRetry={fetchUsers}
+          isRetrying={retrying}
+        />
       ) : (
         <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[700px] text-left text-xs">
             <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="p-4">Candidate</th>

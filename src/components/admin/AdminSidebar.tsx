@@ -15,6 +15,7 @@ import {
   LogOut,
   Sparkles,
   ChevronRight,
+  Server,
 } from "lucide-react";
 
 export function AdminSidebar() {
@@ -30,6 +31,7 @@ export function AdminSidebar() {
     { href: "/admin/ai-settings", label: "AI & Platform", icon: Cpu },
     { href: "/admin/problems", label: "DSA Problems", icon: Code2 },
     { href: "/admin/audit", label: "Audit Trail", icon: FileCheck2 },
+    { href: "/admin/system-check", label: "System Health", icon: Server },
   ];
 
   const handleLogout = async () => {

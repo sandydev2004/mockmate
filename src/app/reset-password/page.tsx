@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Lock, Eye, EyeOff, ArrowRight, Sparkles, AlertCircle, CheckCircle } from "lucide-react";
 import { evaluatePasswordStrength } from "@/lib/auth-guards";
 import { createClient } from "@/lib/supabase/client";
+import { ButtonLoading } from "@/components/loading";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -165,20 +166,15 @@ export default function ResetPasswordPage() {
               </div>
             </div>
 
-            <button
+            <ButtonLoading
               type="submit"
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+              loading={loading}
+              loadingText="Saving password..."
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all"
             >
-              {loading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
-                <>
-                  <span>Save New Password</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              <span>Save New Password</span>
+              <ArrowRight className="w-4 h-4" />
+            </ButtonLoading>
           </form>
         )}
 

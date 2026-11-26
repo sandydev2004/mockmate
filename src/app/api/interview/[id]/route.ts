@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { appStore, calculateIntegritySummary } from "@/lib/store";
 import { getProblemByIdOrSlug } from "@/lib/dsa-problems";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth";
+import { isAdminRole } from "@/lib/admin-permissions";
 
 export async function GET(
   req: NextRequest,
@@ -149,5 +151,67 @@ export async function GET(
   } catch (error: any) {
     console.error("[GET_INTERVIEW_ERROR]", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const interviewId = params.id;
+    const supabase = createAdminClient();
+
+    // Fetch interview to verify ownership
+    let interview: any = null;
+    const { data: dbInterview } = await supabase
+      .from("interviews")
+      .select("*")
+      .eq("id", interviewId)
+      .maybeSingle();
+
+    if (dbInterview) {
+      interview = dbInterview;
+    } else {
+      interview = appStore.getInterview(interviewId);
+    }
+
+    if (!interview) {
+      return NextResponse.json({ error: "Interview not found" }, { status: 404 });
+    }
+
+    // Check ownership
+    const isOwner = interview.user_id === user.id;
+    const isAdmin = isAdminRole(user.role);
+    if (!isOwner && !isAdmin) {
+      return NextResponse.json(
+        { error: "Forbidden: You do not have permission to delete this interview" },
+        { status: 403 }
+      );
+    }
+
+    // Delete child records first
+    try {
+      await supabase.from("messages").delete().eq("interview_id", interviewId);
+      await supabase.from("feedback").delete().eq("interview_id", interviewId);
+      await supabase.from("code_submissions").delete().eq("interview_id", interviewId);
+      await supabase.from("integrity_events").delete().eq("interview_id", interviewId);
+      await supabase.from("interviews").delete().eq("id", interviewId);
+    } catch (dbErr: any) {
+      console.warn("[DELETE_INTERVIEW_DB_WARN]", dbErr.message);
+    }
+
+    // Also delete from local appStore
+    appStore.deleteInterview(interviewId);
+
+    return NextResponse.json({ success: true, message: "Interview deleted successfully" });
+  } catch (err: any) {
+    console.error("[DELETE_INTERVIEW_ERROR]", err);
+    return NextResponse.json({ error: err.message || "Failed to delete interview" }, { status: 500 });
   }
 }

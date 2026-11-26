@@ -44,6 +44,7 @@ import { CodeEditor, DEFAULT_STARTER_CODES } from "@/components/CodeEditor";
 import { useProctoring } from "@/hooks/useProctoring";
 import { CameraSelfView } from "@/components/CameraSelfView";
 import { WatermarkOverlay } from "@/components/WatermarkOverlay";
+import { Spinner, TypingDots } from "@/components/loading";
 
 function InterviewRoomContent({ interviewId }: { interviewId: string }) {
   const router = useRouter();
@@ -68,6 +69,7 @@ function InterviewRoomContent({ interviewId }: { interviewId: string }) {
   // Chat & Answer state
   const [answerText, setAnswerText] = useState("");
   const [sendingAnswer, setSendingAnswer] = useState(false);
+  const [answerWaitSeconds, setAnswerWaitSeconds] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
@@ -232,6 +234,22 @@ function InterviewRoomContent({ interviewId }: { interviewId: string }) {
     setQuestionSecondsRemaining(questionDurationSeconds);
     autoSubmitTriggeredRef.current = false;
   }, [interview?.current_question_index, questionDurationSeconds]);
+
+  // Track answer waiting duration for progressive feedback (8s, 30s)
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (sendingAnswer) {
+      setAnswerWaitSeconds(0);
+      timer = setInterval(() => {
+        setAnswerWaitSeconds((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setAnswerWaitSeconds(0);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [sendingAnswer]);
 
   // 4. Scroll to bottom on new message
   useEffect(() => {
@@ -868,16 +886,32 @@ I am ready for your critique and complexity evaluation.`;
             })}
 
             {sendingAnswer && (
-              <div className="flex gap-3 items-start">
-                <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0">
-                  <Bot className="w-4 h-4" />
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-3 items-start">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center text-white shrink-0">
+                    <Bot className="w-4 h-4" />
+                  </div>
+                  <TypingDots label="Interviewer is evaluating response..." />
                 </div>
-                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 text-xs font-medium">
-                  <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 animate-bounce" />
-                  <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 animate-bounce [animation-delay:0.2s]" />
-                  <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 animate-bounce [animation-delay:0.4s]" />
-                  <span className="ml-2">Evaluating response...</span>
-                </div>
+                {answerWaitSeconds >= 8 && answerWaitSeconds < 30 && (
+                  <div className="ml-11 p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+                    Taking longer than usual... AI is generating comprehensive feedback.
+                  </div>
+                )}
+                {answerWaitSeconds >= 30 && (
+                  <div className="ml-11 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 space-y-2">
+                    <p className="font-semibold">Evaluation is taking unusually long.</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSendingAnswer(false);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs"
+                    >
+                      Retry sending answer
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -1035,10 +1069,15 @@ I am ready for your critique and complexity evaluation.`;
                 <button
                   onClick={handleRunCode}
                   disabled={runningCode || isLocked}
+                  aria-busy={runningCode}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700 transition-colors disabled:opacity-50"
                 >
-                  <Play className="w-3.5 h-3.5 fill-indigo-400" />
-                  <span>{runningCode ? "Testing..." : "Run"}</span>
+                  {runningCode ? (
+                    <Spinner size="sm" className="text-indigo-400" />
+                  ) : (
+                    <Play className="w-3.5 h-3.5 fill-indigo-400" />
+                  )}
+                  <span>{runningCode ? "Executing..." : "Run"}</span>
                 </button>
 
                 <button
