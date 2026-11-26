@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
 
     // 4. Supabase Auth Sign Up
     const supabase = await createClient();
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
+    const forwardedHost = req.headers.get("x-forwarded-host") || req.headers.get("host") || new URL(req.url).host;
+    const proto = req.headers.get("x-forwarded-proto") || (forwardedHost.includes("localhost") ? "http" : "https");
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")
+      ? process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+      : `${proto}://${forwardedHost}`;
 
     const { data, error } = await supabase.auth.signUp({
       email,

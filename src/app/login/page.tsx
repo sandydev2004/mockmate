@@ -96,7 +96,10 @@ function LoginContent() {
       setGoogleLoading(true);
       setError(null);
       const supabase = createClient();
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, "");
+      const origin =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
       const redirectTarget = searchParams.get("redirect") || searchParams.get("next");
       const redirectQuery =
         redirectTarget && redirectTarget.startsWith("/") && !redirectTarget.startsWith("//")
@@ -106,7 +109,7 @@ function LoginContent() {
       const { error: supaErr } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${appUrl}/auth/callback${redirectQuery}`,
+          redirectTo: `${origin}/auth/callback${redirectQuery}`,
         },
       });
 

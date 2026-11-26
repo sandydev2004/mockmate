@@ -93,7 +93,12 @@ export async function middleware(request: NextRequest) {
   const isEmailVerified = Boolean(user?.email_confirmed_at || isGoogleUser);
 
   if (isAuthPath && user && isEmailVerified) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    const rawRedirect = request.nextUrl.searchParams.get("redirect") || request.nextUrl.searchParams.get("next");
+    const target =
+      rawRedirect && rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+        ? rawRedirect
+        : "/dashboard";
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   return response;

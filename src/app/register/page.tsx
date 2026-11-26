@@ -138,12 +138,15 @@ function RegisterContent() {
       setGoogleLoading(true);
       setError(null);
       const supabase = createClient();
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || window.location.origin).replace(/\/$/, "");
+      const origin =
+        typeof window !== "undefined" && window.location.origin
+          ? window.location.origin
+          : (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
 
       const { error: supaErr } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${appUrl}/auth/callback`,
+          redirectTo: `${origin}/auth/callback`,
         },
       });
 

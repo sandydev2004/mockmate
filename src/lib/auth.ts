@@ -88,6 +88,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       return null;
     }
 
+    const userEmail = (user.email || "").toLowerCase();
+    const candidateName =
+      user.user_metadata?.full_name ||
+      user.user_metadata?.name ||
+      (user.email ? user.email.split("@")[0] : "Candidate");
+    const isSuperAdminEmail = Boolean(userEmail && ADMIN_EMAILS.has(userEmail));
+    let effectiveRole: UserRole = isSuperAdminEmail ? "super_admin" : "user";
+
     // Fetch live credits, role, and suspension status from profiles table
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
@@ -97,18 +105,42 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
     if (profileError) {
       console.warn("[AUTH] Profile fetch warning:", profileError.message);
+      // Self-heal: If profile row is missing (PGRST116), create it with 1 credit immediately
+      if (profileError.code === "PGRST116" || profileError.message?.includes("0 rows")) {
+        try {
+          const adminClient = createAdminClient();
+          const { data: createdProfile } = await adminClient
+            .from("profiles")
+            .insert({
+              id: user.id,
+              email: userEmail,
+              full_name: candidateName,
+              credits: 1,
+              role: effectiveRole,
+            })
+            .select("credits, full_name, role, is_suspended")
+            .maybeSingle();
+          if (createdProfile) {
+            return {
+              id: user.id,
+              email: user.email || "",
+              full_name: createdProfile.full_name || candidateName,
+              credits: createdProfile.credits ?? 1,
+              role: (createdProfile.role as UserRole) || effectiveRole,
+              is_suspended: !!createdProfile.is_suspended,
+              email_confirmed_at: user.email_confirmed_at,
+            };
+          }
+        } catch (insertErr) {
+          console.warn("[AUTH] Auto-create missing profile exception:", insertErr);
+        }
+      }
     }
 
-    const candidateName =
-      profile?.full_name ||
-      user.user_metadata?.full_name ||
-      (user.email ? user.email.split("@")[0] : "Candidate");
-
-    const userEmail = (user.email || "").toLowerCase();
-    const isSuperAdminEmail = Boolean(userEmail && ADMIN_EMAILS.has(userEmail));
-    const effectiveRole: UserRole = isSuperAdminEmail
+    effectiveRole = isSuperAdminEmail
       ? "super_admin"
       : ((profile?.role as UserRole) || "user");
+    const finalCandidateName = profile?.full_name || candidateName;
 
     // If super admin email has not been updated in DB profile yet, update it in background
     if (isSuperAdminEmail && profile && profile.role !== "super_admin") {
@@ -136,7 +168,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     return {
       id: user.id,
       email: user.email || "",
-      full_name: candidateName,
+      full_name: finalCandidateName,
       credits: profile?.credits ?? 1,
       role: effectiveRole,
       is_suspended: !!profile?.is_suspended,

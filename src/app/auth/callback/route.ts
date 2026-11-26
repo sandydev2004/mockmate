@@ -12,12 +12,17 @@ export async function GET(req: NextRequest) {
     requestUrl.searchParams.get("error_description") ||
     requestUrl.searchParams.get("error");
 
-  // Determine origin safely from NEXT_PUBLIC_APP_URL or requestUrl
+  // Determine origin safely from request headers (Vercel proxy), NEXT_PUBLIC_APP_URL, or requestUrl
+  const forwardedHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
+  const forwardedProto = req.headers.get("x-forwarded-proto") || (forwardedHost?.includes("localhost") ? "http" : "https");
   const envAppUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  const origin =
-    envAppUrl && !envAppUrl.includes("localhost:3000")
-      ? envAppUrl.replace(/\/$/, "")
-      : requestUrl.origin;
+
+  let origin = requestUrl.origin;
+  if (forwardedHost && !forwardedHost.includes("localhost")) {
+    origin = `${forwardedProto}://${forwardedHost}`;
+  } else if (envAppUrl && !envAppUrl.includes("localhost")) {
+    origin = envAppUrl.replace(/\/$/, "");
+  }
 
   // Sanitize redirect path to prevent open redirect vulnerabilities
   const safeNext = getSafeRedirectPath(rawNext, "/dashboard");
