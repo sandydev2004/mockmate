@@ -66,7 +66,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     let token: string | undefined;
 
     try {

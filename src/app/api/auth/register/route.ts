@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 4. Supabase Auth Sign Up
-    const supabase = createClient();
+    const supabase = await createClient();
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || new URL(req.url).origin;
 
     const { data, error } = await supabase.auth.signUp({

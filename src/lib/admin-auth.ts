@@ -283,7 +283,7 @@ export async function verifyAdminApiDetailed(req: NextRequest): Promise<VerifyAd
 
   // 7. Verify MFA (Supabase TOTP) & Assurance Level (AAL2)
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalErr) {
       logAdminDenial("Failed to query authenticator assurance level from Supabase MFA", {
@@ -422,7 +422,7 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
 
   // Live Supabase MFA verification
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: aalData, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aalErr || aalData?.currentLevel !== "aal2") {
       logAdminDenial(

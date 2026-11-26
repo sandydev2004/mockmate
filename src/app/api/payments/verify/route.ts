@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = validated.data;
     let payment = appStore.getPayment(razorpay_order_id);
 
-    const supabase = createClient();
+    const supabase = await createClient();
     if (!payment) {
       try {
         const { data: dbPay } = await supabase
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (supabaseUrl && !supabaseUrl.includes("mockmate-demo")) {
       try {
-        const supabase = createClient();
+        const supabase = await createClient();
         await supabase.rpc("fulfill_payment", {
           p_order_id: razorpay_order_id,
           p_payment_id: razorpay_payment_id,
