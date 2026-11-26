@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 interface PageProps {
   searchParams?: Promise<{
     redirect?: string;
+    setup?: string;
+    reset?: string;
   }>;
 }
 
@@ -78,6 +80,7 @@ export default async function AdminMfaPage({ searchParams }: PageProps) {
   }
 
   const redirectPath = resolvedSearchParams?.redirect || "/admin";
+  const forceSetup = resolvedSearchParams?.setup === "true" || resolvedSearchParams?.reset === "true";
 
   return (
     <MfaErrorBoundary>
@@ -85,6 +88,7 @@ export default async function AdminMfaPage({ searchParams }: PageProps) {
         userEmail={user.email}
         userRole={user.role}
         redirectPath={redirectPath}
+        forceSetup={forceSetup}
       />
     </MfaErrorBoundary>
   );

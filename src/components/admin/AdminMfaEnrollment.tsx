@@ -22,12 +22,14 @@ interface AdminMfaEnrollmentProps {
   userEmail: string;
   userRole: string;
   redirectPath?: string;
+  forceSetup?: boolean;
 }
 
 export function AdminMfaEnrollment({
   userEmail,
   userRole,
   redirectPath = "/admin",
+  forceSetup = false,
 }: AdminMfaEnrollmentProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -50,14 +52,16 @@ export function AdminMfaEnrollment({
     try {
       const supabase = createClient();
 
-      // Check current assurance level
-      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aalData?.currentLevel === "aal2") {
-        setSuccess(true);
-        setTimeout(() => {
-          window.location.href = redirectPath;
-        }, 800);
-        return;
+      // Check current assurance level (if already AAL2 and not explicitly re-enrolling)
+      if (!forceSetup) {
+        const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalData?.currentLevel === "aal2") {
+          setSuccess(true);
+          setTimeout(() => {
+            window.location.href = redirectPath;
+          }, 800);
+          return;
+        }
       }
 
       // Check existing factors
@@ -68,7 +72,7 @@ export function AdminMfaEnrollment({
 
       const verifiedFactor = factorsData?.totp?.find((f) => f.status === "verified");
 
-      if (verifiedFactor) {
+      if (verifiedFactor && !forceSetup) {
         // Factor already enrolled on account; prompt for 6-digit code
         setIsExistingFactor(true);
         setFactorId(verifiedFactor.id);
@@ -76,10 +80,10 @@ export function AdminMfaEnrollment({
         return;
       }
 
-      // Clean up any stale unverified factors before starting new enrollment
+      // Clean up stale or existing factors before starting new enrollment
       if (factorsData?.all) {
         for (const factor of factorsData.all) {
-          if (factor.status === "unverified") {
+          if (factor.status === "unverified" || (forceSetup && factor.status === "verified")) {
             await supabase.auth.mfa.unenroll({ factorId: factor.id }).catch(() => {});
           }
         }
@@ -417,13 +421,14 @@ export function AdminMfaEnrollment({
               <span>Verify & Access Admin Panel</span>
             </ButtonLoading>
 
-            <div className="text-center pt-2">
+            <div className="pt-3 text-center border-t border-slate-800/80">
               <button
                 type="button"
                 onClick={handleUnenrollAndReEnroll}
-                className="text-xs text-indigo-400 hover:text-indigo-300 underline"
+                className="inline-flex items-center justify-center gap-2 text-xs text-indigo-400 hover:text-indigo-300 transition-colors py-2 px-3 rounded-lg hover:bg-slate-800 border border-slate-800"
               >
-                Scan a new QR code with Google Authenticator (Re-enroll)
+                <Smartphone className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Lost or need new QR code? Re-scan with Google Authenticator</span>
               </button>
             </div>
           </form>
