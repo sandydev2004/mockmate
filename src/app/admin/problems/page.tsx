@@ -15,10 +15,15 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { DSAProblem } from "@/types";
+import { adminFetch } from "@/lib/admin-fetch";
+import { AdminErrorState } from "@/components/admin/AdminErrorState";
 
 export default function AdminProblemsPage() {
   const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
   const [search, setSearch] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -35,16 +40,22 @@ export default function AdminProblemsPage() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const fetchProblems = async () => {
-    setLoading(true);
+    if (problems.length === 0) setLoading(true);
+    else setRetrying(true);
+    setError(null);
     try {
-      const res = await fetch("/api/admin/problems");
-      if (!res.ok) throw new Error("Failed to load problems");
-      const data = await res.json();
-      setProblems(data.problems || []);
-    } catch (err) {
-      console.error(err);
+      const result = await adminFetch<{ problems: any[] }>("/api/admin/problems");
+      if (result.error) {
+        setError(result.error);
+        setRequestId(result.requestId);
+      } else if (result.data) {
+        setProblems(result.data.problems || []);
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load problems");
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -215,15 +226,24 @@ export default function AdminProblemsPage() {
             placeholder="Search problems by title, slug, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+            className="w-full min-h-[44px] bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
           />
         </div>
       </div>
 
       {/* Problem Cards Table */}
-      <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+      {error ? (
+        <AdminErrorState
+          title="Failed to Load Problems"
+          error={error}
+          requestId={requestId}
+          onRetry={fetchProblems}
+          isRetrying={retrying}
+        />
+      ) : (
+        <div className="rounded-xl bg-slate-900 border border-slate-800 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-xs">
             <thead className="bg-slate-950 border-b border-slate-800 text-slate-400 uppercase tracking-wider text-[11px]">
               <tr>
                 <th className="p-4">Title & Slug</th>
@@ -311,6 +331,7 @@ export default function AdminProblemsPage() {
           </table>
         </div>
       </div>
+      )}
 
       {/* Edit / Create Problem Modal */}
       {isEditModalOpen && editingProblem && (

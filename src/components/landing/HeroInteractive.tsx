@@ -15,7 +15,7 @@ import {
   FileText,
   Languages,
 } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
+import { trackEvent, trackFunnel } from "@/lib/analytics";
 
 export function HeroInteractive() {
   const router = useRouter();
@@ -29,7 +29,7 @@ export function HeroInteractive() {
       if (search) {
         setRegisterUrl(`/register${search}`);
       }
-      trackEvent("landing_page_view", { lang });
+      trackFunnel("landing_view", { lang });
     }
   }, [lang]);
 

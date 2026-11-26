@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowRight, Sparkles, AlertCircle, CheckCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { ButtonLoading } from "@/components/loading";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -89,20 +90,15 @@ export default function ForgotPasswordPage() {
             </div>
           </div>
 
-          <button
+          <ButtonLoading
             type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+            loading={loading}
+            loadingText="Sending reset link..."
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all"
           >
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>Send Reset Link</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+            <span>Send Reset Link</span>
+            <ArrowRight className="w-4 h-4" />
+          </ButtonLoading>
         </form>
 
         <p className="text-center text-xs text-slate-500">

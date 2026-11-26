@@ -1,5 +1,5 @@
 import { requireAdminPage } from "@/lib/admin-auth";
-import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AdminShell } from "@/components/admin/AdminShell";
 import { PrivacyBanner } from "@/components/admin/PrivacyBanner";
 import { headers } from "next/headers";
 
@@ -10,28 +10,38 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = headers();
-  const currentPath = headersList.get("x-mockmate-path") || "";
-  const isMfaPage = currentPath === "/admin/mfa" || currentPath.startsWith("/admin/mfa");
+  const headersList = (await headers()) as any;
+  const currentPath =
+    headersList.get("x-mockmate-path") ||
+    headersList.get("x-invoke-path") ||
+    headersList.get("next-url") ||
+    headersList.get("x-matched-path") ||
+    headersList.get("x-forwarded-uri") ||
+    headersList.get("x-original-uri") ||
+    "";
+  const referer = headersList.get("referer") || "";
+  const isMfaPage =
+    currentPath === "/admin/mfa" ||
+    currentPath.startsWith("/admin/mfa") ||
+    currentPath.includes("/mfa") ||
+    referer.includes("/admin/mfa");
 
   // Server-side admin verification: strictly throws notFound() for non-admins / logged out users
   // Redirects to /admin/mfa if admin is not at AAL2 (unless already on /admin/mfa)
-  await requireAdminPage(currentPath);
+  if (!isMfaPage) {
+    await requireAdminPage(currentPath || "/admin");
+  }
 
   if (isMfaPage) {
     return <>{children}</>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
-      <PrivacyBanner />
-      <div className="flex-1 flex">
-        <AdminSidebar />
-        <main className="flex-1 bg-slate-950 p-6 md:p-8 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">{children}</div>
-        </main>
+    <AdminShell>
+      <div className="space-y-6">
+        <PrivacyBanner />
+        {children}
       </div>
-    </div>
+    </AdminShell>
   );
 }
-

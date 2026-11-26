@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getSafeRedirectPath } from "@/lib/auth-guards";
+import { appStore } from "@/lib/store";
 
 export async function GET(req: NextRequest) {
   const requestUrl = new URL(req.url);
@@ -113,23 +114,34 @@ export async function GET(req: NextRequest) {
               .update({ full_name: candidateName })
               .eq("id", user.id);
           }
+          appStore.updateProfile(user.id, {
+            full_name: profileById.full_name || candidateName,
+            email: user.email.toLowerCase(),
+            credits: profileById.credits ?? 1,
+          });
         } else {
           // Check if profile exists by email (prior email/password account linking)
           const { data: profileByEmail } = await adminClient
             .from("profiles")
-            .select("id, email, full_name, credits")
+            .select("id, email, full_name, credits, role")
             .ilike("email", user.email)
             .maybeSingle();
 
           if (profileByEmail) {
-            // Existing account with same email: link to new user ID if necessary, PRESERVE EXISTING CREDITS
-            await adminClient
-              .from("profiles")
-              .update({
-                id: user.id,
-                full_name: profileByEmail.full_name || candidateName,
-              })
-              .eq("id", profileByEmail.id);
+            // Existing account with same email: insert for new auth user ID, PRESERVE EXISTING CREDITS & ROLE
+            await adminClient.from("profiles").upsert({
+              id: user.id,
+              email: user.email.toLowerCase(),
+              full_name: profileByEmail.full_name || candidateName,
+              credits: profileByEmail.credits ?? 1,
+              role: (profileByEmail as any).role || "user",
+            });
+            appStore.updateProfile(user.id, {
+              full_name: profileByEmail.full_name || candidateName,
+              email: user.email.toLowerCase(),
+              credits: profileByEmail.credits ?? 1,
+              role: (profileByEmail as any).role || "user",
+            });
           } else {
             // Brand new user: exactly 1 free credit
             await adminClient.from("profiles").insert({
@@ -137,6 +149,12 @@ export async function GET(req: NextRequest) {
               email: user.email.toLowerCase(),
               full_name: candidateName,
               credits: 1,
+            });
+            appStore.updateProfile(user.id, {
+              full_name: candidateName,
+              email: user.email.toLowerCase(),
+              credits: 1,
+              role: "user",
             });
           }
         }

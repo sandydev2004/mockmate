@@ -1,8 +1,16 @@
 import { createClient } from "./supabase/server";
+import { createAdminClient } from "./supabase/admin";
 import { headers } from "next/headers";
 import { appStore } from "./store";
 
 import { UserRole } from "@/types";
+
+export const ADMIN_EMAILS = new Set(
+  [
+    "sandy.dev2004@gmail.com",
+    ...(process.env.ADMIN_EMAILS ? process.env.ADMIN_EMAILS.split(",") : []),
+  ].map((e) => e.trim().toLowerCase())
+);
 
 export interface CurrentUser {
   id: string;
@@ -23,12 +31,13 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   // Support local test simulation when Supabase remote URL is unreachable
   if (process.env.NODE_ENV !== "production") {
     try {
-      const headersList = headers();
+      const headersList = (await headers()) as any;
       const testRole = headersList.get("x-test-auth-role");
-      if (testRole) {
+      const testEmail = headersList.get("x-test-auth-email");
+      if (testRole || (testEmail && ADMIN_EMAILS.has(testEmail.toLowerCase()))) {
         const testId = headersList.get("x-test-auth-id") || "test-user-id";
         const p = appStore.getProfile(testId);
-        const effectiveRole = testRole as UserRole;
+        const effectiveRole = (testRole as UserRole) || "super_admin";
         const isSuspended = headersList.get("x-test-auth-suspended") === "true";
         const testCreditsHeader = headersList.get("x-test-auth-credits");
         if (testCreditsHeader !== null) {
@@ -36,7 +45,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
         }
         return {
           id: testId,
-          email: headersList.get("x-test-auth-email") || p.email || "user@mockmate.internal",
+          email: testEmail || p.email || "user@mockmate.internal",
           full_name: p.full_name || "Test User",
           credits: p.credits ?? 1,
           role: effectiveRole,
@@ -61,7 +70,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     let token: string | undefined;
 
     try {
-      const headersList = headers();
+      const headersList = (await headers()) as any;
       const authHeader = headersList.get("authorization");
       if (authHeader && authHeader.startsWith("Bearer ")) {
         token = authHeader.substring(7).trim();
@@ -95,12 +104,41 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       user.user_metadata?.full_name ||
       (user.email ? user.email.split("@")[0] : "Candidate");
 
+    const userEmail = (user.email || "").toLowerCase();
+    const isSuperAdminEmail = Boolean(userEmail && ADMIN_EMAILS.has(userEmail));
+    const effectiveRole: UserRole = isSuperAdminEmail
+      ? "super_admin"
+      : ((profile?.role as UserRole) || "user");
+
+    // If super admin email has not been updated in DB profile yet, update it in background
+    if (isSuperAdminEmail && profile && profile.role !== "super_admin") {
+      try {
+        const adminClient = createAdminClient();
+        adminClient
+          .from("profiles")
+          .update({ role: "super_admin" })
+          .eq("id", user.id)
+          .then(
+            ({ error }: any) => {
+              if (error) {
+                console.warn("[AUTH] Auto-promote profile warning:", error.message);
+              } else {
+                console.log(`[AUTH] Auto-promoted ${user.email} to super_admin in Supabase.`);
+              }
+            },
+            (e: any) => console.warn("[AUTH] Auto-promote profile exception:", e)
+          );
+      } catch {
+        // Safe fallback
+      }
+    }
+
     return {
       id: user.id,
       email: user.email || "",
       full_name: candidateName,
       credits: profile?.credits ?? 1,
-      role: (profile?.role as UserRole) || "user",
+      role: effectiveRole,
       is_suspended: !!profile?.is_suspended,
       email_confirmed_at: user.email_confirmed_at,
     };

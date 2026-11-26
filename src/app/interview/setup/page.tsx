@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Role, CompanyType, Difficulty, RoundType } from "@/types";
+import { trackFunnel } from "@/lib/analytics";
+import { Spinner, ButtonLoading } from "@/components/loading";
+import { isAdminRole } from "@/lib/admin-permissions";
 
 function InterviewSetupContent() {
   const router = useRouter();
@@ -22,6 +25,9 @@ function InterviewSetupContent() {
   // Form State
   const [role, setRole] = useState<Role>("SDE");
   const [companyType, setCompanyType] = useState<CompanyType>("product");
+  const [targetCompany, setTargetCompany] = useState<string | null>(
+    searchParams.get("company") || null
+  );
   const [difficulty, setDifficulty] = useState<Difficulty>("medium");
   const [round, setRound] = useState<RoundType>(
     (searchParams.get("round") as RoundType) || "dsa"
@@ -111,6 +117,7 @@ function InterviewSetupContent() {
         body: JSON.stringify({
           role,
           company_type: companyType,
+          target_company: targetCompany,
           difficulty,
           round,
           resume_id: resumeId,
@@ -126,6 +133,14 @@ function InterviewSetupContent() {
         }
         throw new Error(data.error || "Failed to start interview");
       }
+
+      // Track funnel conversion
+      trackFunnel("first_interview_started", {
+        role,
+        round,
+        difficulty,
+        company: targetCompany || companyType,
+      });
 
       // Redirect to interview room with configured timer and proctoring mode
       router.push(`/interview/${data.interview.id}?timer=${questionTimer}&mode=${proctoringMode}`);
@@ -200,50 +215,124 @@ function InterviewSetupContent() {
           </div>
         </div>
 
-        {/* 2. Company Model */}
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
-          <label className="block text-sm font-bold text-slate-900 dark:text-white">
-            2. Company Hiring Model
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {[
-              {
-                id: "service",
-                title: "Service Company",
-                examples: "TCS, Infosys, Wipro, Cognizant, Accenture",
-                desc: "Focus on CS fundamentals, OOP, clean communication & standard DSA",
-              },
-              {
-                id: "product",
-                title: "Tier-1 Product Company",
-                examples: "Amazon, Microsoft, Swiggy, Flipkart, Adobe",
-                desc: "Rigorous focus on optimal time complexity, edge cases & internal mechanisms",
-              },
-              {
-                id: "startup",
-                title: "High-Growth Startup",
-                examples: "CRED, Zepto, Razorpay, Postman",
-                desc: "Practical engineering, tradeoffs, hands-on debugging & architecture choices",
-              },
-            ].map((item) => (
-              <button
-                type="button"
-                key={item.id}
-                onClick={() => setCompanyType(item.id as CompanyType)}
-                className={`p-4 rounded-xl text-left border transition-all ${
-                  companyType === item.id
-                    ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-white ring-2 ring-indigo-500/20"
-                    : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-sm">{item.title}</span>
-                  {companyType === item.id && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
-                </div>
-                <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mb-1.5">{item.examples}</p>
-                <p className="text-xs text-slate-500">{item.desc}</p>
-              </button>
-            ))}
+        {/* 2. Company Model & Target Company Profile */}
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-bold text-slate-900 dark:text-white">
+                2. Target Company & Hiring Model
+              </label>
+              {targetCompany && (
+                <button
+                  type="button"
+                  onClick={() => setTargetCompany(null)}
+                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
+                >
+                  Clear company selection
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              Pick a specific company to tailor question phrasing, difficulty expectations, and evaluation criteria.
+            </p>
+          </div>
+
+          {/* Selectable Company Pills */}
+          <div className="space-y-3">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Select Specific Company Profile:
+            </span>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { name: "TCS", type: "service" as const, hint: "TCS NQT / Digital / Prime criteria" },
+                { name: "Infosys", type: "service" as const, hint: "Infosys SP / DSE OOP & DBMS bar" },
+                { name: "Wipro", type: "service" as const, hint: "Wipro Elite & Turbo CS fundamentals" },
+                { name: "Cognizant", type: "service" as const, hint: "Cognizant GenC Next / Elevate track" },
+                { name: "Amazon", type: "product" as const, hint: "Optimal complexity + Leadership Principles" },
+                { name: "Microsoft", type: "product" as const, hint: "Clean algorithms & modular structure" },
+                { name: "Swiggy", type: "product" as const, hint: "Real-time logistics & concurrency" },
+                { name: "CRED", type: "startup" as const, hint: "High-scale fintech & clean architecture" },
+                { name: "Zepto", type: "startup" as const, hint: "Low-latency systems & rapid coding" },
+                { name: "Razorpay", type: "startup" as const, hint: "Payment idempotency & distributed queues" },
+              ].map((c) => {
+                const isSelected = targetCompany === c.name;
+                return (
+                  <button
+                    type="button"
+                    key={c.name}
+                    onClick={() => {
+                      if (isSelected) {
+                        setTargetCompany(null);
+                      } else {
+                        setTargetCompany(c.name);
+                        setCompanyType(c.type);
+                      }
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      isSelected
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-sm ring-2 ring-indigo-500/20"
+                        : "bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-indigo-400"
+                    }`}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
+            </div>
+            {targetCompany && (
+              <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 text-xs text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
+                <span>
+                  <strong>{targetCompany} profile active:</strong> AI interviewer will match {targetCompany}&apos;s real recruitment rounds and criteria.
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80">
+            <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block mb-3">
+              Company Category:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                {
+                  id: "service",
+                  title: "Service Company",
+                  examples: "TCS, Infosys, Wipro, Cognizant",
+                  desc: "Focus on CS fundamentals, OOP, clean communication & standard DSA",
+                },
+                {
+                  id: "product",
+                  title: "Tier-1 Product Company",
+                  examples: "Amazon, Microsoft, Swiggy",
+                  desc: "Rigorous focus on optimal time complexity, edge cases & internal mechanisms",
+                },
+                {
+                  id: "startup",
+                  title: "High-Growth Startup",
+                  examples: "CRED, Zepto, Razorpay",
+                  desc: "Practical engineering, tradeoffs, hands-on debugging & architecture choices",
+                },
+              ].map((item) => (
+                <button
+                  type="button"
+                  key={item.id}
+                  onClick={() => setCompanyType(item.id as CompanyType)}
+                  className={`p-4 rounded-xl text-left border transition-all ${
+                    companyType === item.id
+                      ? "border-indigo-600 bg-indigo-50/60 dark:bg-indigo-950/40 text-indigo-950 dark:text-white ring-2 ring-indigo-500/20"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-sm">{item.title}</span>
+                    {companyType === item.id && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
+                  </div>
+                  <p className="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium mb-1.5">{item.examples}</p>
+                  <p className="text-xs text-slate-500">{item.desc}</p>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -350,16 +439,21 @@ function InterviewSetupContent() {
 
           <div className="flex items-center gap-4">
             <label className="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:border-indigo-500 dark:hover:border-indigo-500 bg-slate-50/50 dark:bg-slate-850 transition-colors">
-              <Upload className="w-6 h-6 text-indigo-500 mb-2" />
+              {uploadingResume ? (
+                <Spinner size="md" className="text-indigo-500 mb-2" />
+              ) : (
+                <Upload className="w-6 h-6 text-indigo-500 mb-2" />
+              )}
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
                 {resumeFile ? resumeFile.name : "Click to select resume PDF"}
               </span>
               <span className="text-[11px] text-slate-400 mt-1">
-                {uploadingResume ? "Extracting text..." : "PDF format only, max 5 MB"}
+                {uploadingResume ? "Extracting text from resume..." : "PDF format only, max 5 MB"}
               </span>
               <input
                 type="file"
                 accept=".pdf,application/pdf"
+                disabled={uploadingResume}
                 onChange={handleResumeChange}
                 className="hidden"
               />
@@ -466,7 +560,7 @@ function InterviewSetupContent() {
           </div>
 
           {/* Admin Fast Practice Toggle */}
-          {userRole === "admin" && (
+          {(userRole === "admin" || userRole === "super_admin" || userRole === "support") && (
             <div className="p-3.5 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between gap-3 text-xs">
               <div className="space-y-0.5">
                 <span className="font-bold text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
@@ -517,7 +611,7 @@ function InterviewSetupContent() {
         </div>
 
         {/* Out of credits blocker for normal users */}
-        {userRole !== "admin" && credits !== null && credits < 1 && (
+        {!isAdminRole(userRole) && credits !== null && credits < 1 && (
           <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <AlertCircle className="w-5 h-5 shrink-0 text-rose-600 dark:text-rose-400" />
@@ -541,7 +635,7 @@ function InterviewSetupContent() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 dark:border-slate-800">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
-            {userRole === "admin" ? (
+            {isAdminRole(userRole) ? (
               <span>
                 <strong className="text-indigo-600 dark:text-indigo-400 font-bold">Admin: unlimited</strong>
                 {" — credit checks & deductions waived for admin testing."}
@@ -554,14 +648,31 @@ function InterviewSetupContent() {
             )}
           </div>
 
-          <button
+          {!isAdminRole(userRole) && credits !== null && credits < 1 && (
+            <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>You have 0 interview credits remaining. Get a pack starting at ₹99 to practice.</span>
+              </div>
+              <Link
+                href="/pricing"
+                className="px-4 py-2 rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 shrink-0 text-center shadow-sm"
+              >
+                Buy Interview Pack (₹99) &rarr;
+              </Link>
+            </div>
+          )}
+
+          <ButtonLoading
             type="submit"
-            disabled={loading || uploadingResume || (userRole !== "admin" && credits !== null && credits < 1)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-bold text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5 disabled:opacity-50"
+            loading={loading}
+            loadingText="Starting Session..."
+            disabled={uploadingResume || (!isAdminRole(userRole) && credits !== null && credits < 1)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-xl font-bold text-base bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/25 transition-all transform hover:-translate-y-0.5"
           >
             <PlayCircle className="w-5 h-5" />
-            <span>{loading ? "Starting Session..." : "Enter Interview Room"}</span>
-          </button>
+            <span>Enter Interview Room</span>
+          </ButtonLoading>
         </div>
       </form>
     </div>

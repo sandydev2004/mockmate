@@ -11,25 +11,34 @@ import {
   RefreshCw,
   Video,
 } from "lucide-react";
+import { adminFetch } from "@/lib/admin-fetch";
+import { AdminErrorState } from "@/components/admin/AdminErrorState";
 
 export default function AdminIntegrityQueuePage() {
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | undefined>();
+  const [retrying, setRetrying] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
 
   const fetchQueue = async () => {
-    setLoading(true);
+    if (queue.length === 0) setLoading(true);
+    else setRetrying(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/integrity");
-      if (!res.ok) throw new Error("Failed to load integrity review queue");
-      const data = await res.json();
-      setQueue(data.queue || []);
+      const result = await adminFetch<{ queue: any[] }>("/api/admin/integrity");
+      if (result.error) {
+        setError(result.error);
+        setRequestId(result.requestId);
+      } else if (result.data) {
+        setQueue(result.data.queue || []);
+      }
     } catch (err: any) {
       setError(err.message || "Failed to load queue");
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -83,13 +92,15 @@ export default function AdminIntegrityQueuePage() {
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-400">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
+      {error ? (
+        <AdminErrorState
+          title="Failed to Load Integrity Queue"
+          error={error}
+          requestId={requestId}
+          onRetry={fetchQueue}
+          isRetrying={retrying}
+        />
+      ) : loading ? (
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-24 rounded-xl bg-slate-900 border border-slate-800 animate-pulse"></div>

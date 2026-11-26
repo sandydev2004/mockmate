@@ -300,6 +300,10 @@ class MockMateStore {
     return this.interviews.get(id);
   }
 
+  deleteInterview(id: string): boolean {
+    return this.interviews.delete(id);
+  }
+
   getUserInterviews(userId: string): InterviewRecord[] {
     return Array.from(this.interviews.values())
       .filter((i) => i.user_id === userId)
@@ -353,11 +357,34 @@ class MockMateStore {
 
   // Payments
   savePayment(record: PaymentRecord): void {
-    this.payments.set(record.razorpay_order_id, record);
+    const key = record.order_id || record.razorpay_order_id;
+    this.payments.set(key, record);
+    if (record.razorpay_order_id && record.razorpay_order_id !== key) {
+      this.payments.set(record.razorpay_order_id, record);
+    }
   }
 
   getPayment(orderId: string): PaymentRecord | undefined {
     return this.payments.get(orderId);
+  }
+
+  getUserPayments(userId: string): PaymentRecord[] {
+    const userPayments = Array.from(this.payments.values()).filter(
+      (p) => p.user_id === userId
+    );
+    // Deduplicate in case indexed by both order_id and razorpay_order_id
+    const seen = new Set<string>();
+    const result: PaymentRecord[] = [];
+    for (const p of userPayments) {
+      const idKey = p.id || p.order_id || p.razorpay_order_id;
+      if (!seen.has(idKey)) {
+        seen.add(idKey);
+        result.push(p);
+      }
+    }
+    return result.sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   }
 
   // Integrity Events

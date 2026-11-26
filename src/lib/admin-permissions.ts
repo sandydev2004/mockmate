@@ -1,4 +1,4 @@
-import { UserRole } from "@/types";
+import type { UserRole } from "../types/index";
 
 export type AdminRole = "support" | "admin" | "super_admin";
 export type AllRole = "user" | AdminRole;

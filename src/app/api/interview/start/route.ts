@@ -13,6 +13,7 @@ import { logAdminAction } from "@/lib/audit";
 const startInterviewSchema = z.object({
   role: z.enum(["SDE", "Data/ML", "Core"]),
   company_type: z.enum(["service", "product", "startup"]),
+  target_company: z.string().optional().nullable(),
   difficulty: z.enum(["easy", "medium", "hard"]),
   round: z.enum(["dsa", "hr", "cs_fundamentals", "system_design"]),
   resume_id: z.string().optional().nullable(),
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { role, company_type, difficulty, round, resume_id, mode } = validated.data;
+    const { role, company_type, target_company, difficulty, round, resume_id, mode } = validated.data;
     const supabase = createAdminClient();
 
     // 1. Credit & Suspension Pre-check using centralized helper (Do NOT deduct yet! Only deduct after LLM succeeds)
@@ -164,6 +165,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = buildInterviewerSystemPrompt({
       role,
       companyType: company_type,
+      targetCompany: target_company,
       difficulty,
       round,
       resumeText,
@@ -172,11 +174,17 @@ export async function POST(req: NextRequest) {
 
     let firstPrompt = "";
     if (round === "dsa" && selectedProblem) {
-      firstPrompt = `Start the interview. Greet the candidate professionally, mention this is a DSA round for a ${company_type} company, and introduce the problem: "${selectedProblem.title}". Briefly outline the objective and ask the candidate how they plan to approach it before writing code. Keep under 120 words.`;
+      firstPrompt = `Start the interview. Greet the candidate professionally, mention this is a DSA round${
+        target_company ? ` for ${target_company}` : ` for a ${company_type} company`
+      }, and introduce the problem: "${selectedProblem.title}". Briefly outline the objective and ask the candidate how they plan to approach it before writing code. Keep under 120 words.`;
     } else if (resumeText) {
-      firstPrompt = `Start the interview. Greet the candidate warmly, mention you are reviewing their resume, and ask an opening technical question directly relating to one of the projects or key technical skills stated in their resume. Keep under 120 words.`;
+      firstPrompt = `Start the interview. Greet the candidate warmly${
+        target_company ? ` on behalf of ${target_company}` : ""
+      }, mention you are reviewing their resume, and ask an opening technical question directly relating to one of the projects or key technical skills stated in their resume. Keep under 120 words.`;
     } else {
-      firstPrompt = `Start the interview. Greet the candidate professionally and ask the first question for a ${difficulty}-level ${role} interview in the ${round} round. Keep under 120 words.`;
+      firstPrompt = `Start the interview. Greet the candidate professionally${
+        target_company ? ` on behalf of ${target_company}` : ""
+      } and ask the first question for a ${difficulty}-level ${role} interview in the ${round} round. Keep under 120 words.`;
     }
 
     // 4. Call Real LLM FIRST (If this fails, credit is NOT deducted!)
@@ -211,6 +219,7 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       role,
       company_type,
+      target_company: target_company || null,
       difficulty,
       round,
       resume_id: resume_id || null,
@@ -228,8 +237,13 @@ export async function POST(req: NextRequest) {
       is_admin_test: isAdmin,
     };
 
-    // Save to Supabase
-    await supabase.from("interviews").insert(interviewRecord);
+    // Save to Supabase (with fallback if column target_company doesn't exist yet on remote table)
+    const { error: insertError } = await supabase.from("interviews").insert(interviewRecord);
+    if (insertError && insertError.message?.includes("target_company")) {
+      const fallbackRecord = { ...interviewRecord };
+      delete (fallbackRecord as any).target_company;
+      await supabase.from("interviews").insert(fallbackRecord);
+    }
 
     // If an administrator starts an interview without credits, log to audit_logs (metadata only, NO interview content)
     if (isAdmin) {

@@ -633,6 +633,7 @@ export async function generateStructuredJSON<T>(
 export async function evaluateCandidateAnswer(params: {
   role: string;
   companyType: string;
+  targetCompany?: string | null;
   difficulty: string;
   round: string;
   resumeText?: string;
@@ -645,6 +646,7 @@ export async function evaluateCandidateAnswer(params: {
   const {
     role,
     companyType,
+    targetCompany,
     difficulty,
     round,
     resumeText,
@@ -658,6 +660,7 @@ export async function evaluateCandidateAnswer(params: {
   const systemPrompt = buildInterviewerSystemPrompt({
     role,
     companyType,
+    targetCompany,
     difficulty,
     round,
     resumeText,
@@ -713,15 +716,62 @@ CRITICAL INSTRUCTIONS:
 export function buildInterviewerSystemPrompt(params: {
   role: string;
   companyType: string;
+  targetCompany?: string | null;
   difficulty: string;
   round: string;
   resumeText?: string;
   totalQuestions: number;
 }): string {
-  const { role, companyType, difficulty, round, resumeText, totalQuestions } = params;
+  const { role, companyType, targetCompany, difficulty, round, resumeText, totalQuestions } = params;
 
   let companyContext = "";
-  if (companyType === "service") {
+  if (targetCompany) {
+    switch (targetCompany) {
+      case "TCS":
+        companyContext =
+          "Tata Consultancy Services (TCS NQT / Digital / Prime track). Prioritize fundamental clarity, speed, pseudocode dry-runs, core OOP/DBMS/SQL, project explanation, and clean communication. In HR, assess willingness for relocation, night shifts, and adaptability.";
+        break;
+      case "Infosys":
+        companyContext =
+          "Infosys (Specialist Programmer & DSE / SE track). Emphasize OOP design, database normalization, SQL queries, algorithmic logic, time complexity awareness, and strong software engineering fundamentals.";
+        break;
+      case "Wipro":
+        companyContext =
+          "Wipro (Elite & Turbo hiring track). Focus on core CS concepts (OS process scheduling/deadlocks, TCP/IP networking, relational tables), basic problem-solving, project architecture, and articulate explanations.";
+        break;
+      case "Cognizant":
+        companyContext =
+          "Cognizant (GenC, GenC Next & Elevate). Evaluate core data structures, debugging skills, full-stack/project comprehension, database queries, and clear problem decomposition.";
+        break;
+      case "Amazon":
+        companyContext =
+          "Amazon (SDE I campus hiring). Strictly evaluate optimal time/space complexity (O(N) vs O(N^2)), edge cases, and Amazon Leadership Principles (Customer Obsession, Ownership, Bias for Action, Dive Deep). In HR, ask behavioral questions strictly using the STAR method.";
+        break;
+      case "Microsoft":
+        companyContext =
+          "Microsoft (SWE campus hiring). Probe deeply into clean and elegant code structure, boundary condition handling, data structure selection (trees, graphs, DP), modular architecture, and systematic reasoning.";
+        break;
+      case "Swiggy":
+        companyContext =
+          "Swiggy (Software Engineer). Focus on high-concurrency systems, real-time routing/logistics, machine coding patterns, caching (Redis), concurrency handling, and resilient backend design.";
+        break;
+      case "CRED":
+        companyContext =
+          "CRED (Product Engineering). Focus on ultra-high scale fintech patterns, idempotent API design, financial transaction atomicity, distributed locks, and clean craft/UI-backend cohesion.";
+        break;
+      case "Zepto":
+        companyContext =
+          "Zepto (Quick-Commerce Engineering). Emphasize extreme low-latency processing, inventory state synchronization, concurrent orders, rapid algorithmic execution, and live debugging under time constraints.";
+        break;
+      case "Razorpay":
+        companyContext =
+          "Razorpay (Fintech Platform Engineering). Focus on payment gateway mechanics, webhook idempotency, distributed systems, ACID compliance, double-spend prevention, and resilient error recovery.";
+        break;
+      default:
+        companyContext = `Target Company: ${targetCompany}. Maintain high engineering standards, clean communication, and realistic technical evaluation tailored to this company.`;
+        break;
+    }
+  } else if (companyType === "service") {
     companyContext =
       "Service-based company (TCS, Infosys, Wipro, Cognizant, Accenture). Focus on fundamental clarity, standard coding questions, core CS (DBMS, OS, OOP, CN), project explanation, and clean communication.";
   } else if (companyType === "product") {

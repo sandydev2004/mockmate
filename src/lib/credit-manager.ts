@@ -1,6 +1,7 @@
 import { CurrentUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appStore } from "@/lib/store";
+import { isAdminRole } from "@/lib/admin-permissions";
 
 export interface CreditEligibilityResult {
   eligible: boolean;
@@ -20,7 +21,7 @@ export interface CreditConsumptionResult {
  * Returns true if the user is an administrator and therefore exempt from all credit checks and deductions.
  */
 export function canUseWithoutCredits(user: CurrentUser | null | undefined): boolean {
-  return user?.role === "admin" || user?.role === "super_admin";
+  return isAdminRole(user?.role);
 }
 
 /**
@@ -62,12 +63,8 @@ export async function verifyCreditEligibility(
     };
   }
 
-  // Admin credit exemption (admin & super_admin)
-  const isServerVerifiedAdmin =
-    dbProfile?.role === "admin" ||
-    dbProfile?.role === "super_admin" ||
-    user.role === "admin" ||
-    user.role === "super_admin";
+  // Admin credit exemption (support, admin & super_admin)
+  const isServerVerifiedAdmin = isAdminRole(dbProfile?.role) || isAdminRole(user.role);
   if (isServerVerifiedAdmin) {
     return {
       eligible: true,

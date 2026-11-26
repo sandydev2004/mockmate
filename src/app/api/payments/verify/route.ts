@@ -25,7 +25,30 @@ export async function POST(req: NextRequest) {
     }
 
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = validated.data;
-    const payment = appStore.getPayment(razorpay_order_id);
+    let payment = appStore.getPayment(razorpay_order_id);
+
+    const supabase = createClient();
+    if (!payment) {
+      try {
+        const { data: dbPay } = await supabase
+          .from("payments")
+          .select("*")
+          .or(`order_id.eq.${razorpay_order_id},razorpay_order_id.eq.${razorpay_order_id}`)
+          .single();
+        if (dbPay) {
+          payment = {
+            id: dbPay.id,
+            user_id: dbPay.user_id,
+            order_id: dbPay.order_id || dbPay.razorpay_order_id,
+            razorpay_order_id: dbPay.razorpay_order_id || dbPay.order_id,
+            amount: dbPay.amount,
+            credits_added: dbPay.credits_added,
+            status: dbPay.status,
+            created_at: dbPay.created_at,
+          };
+        }
+      } catch {}
+    }
 
     if (!payment) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });

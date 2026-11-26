@@ -3,11 +3,12 @@ import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  request.headers.set("x-mockmate-path", pathname);
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-mockmate-path", pathname);
 
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
   response.headers.set("x-mockmate-path", pathname);
@@ -36,6 +37,7 @@ export async function middleware(request: NextRequest) {
             headers: request.headers,
           },
         });
+        response.headers.set("x-mockmate-path", pathname);
         response.cookies.set({ name, value, ...options });
       },
       remove(name: string, options: CookieOptions) {
@@ -45,6 +47,7 @@ export async function middleware(request: NextRequest) {
             headers: request.headers,
           },
         });
+        response.headers.set("x-mockmate-path", pathname);
         response.cookies.set({ name, value: "", ...options });
       },
     },

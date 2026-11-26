@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { Spinner, Skeleton } from "@/components/loading";
+import { isAdminRole } from "@/lib/admin-permissions";
 import {
   Sparkles,
   Zap,
@@ -38,8 +40,14 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
   const [userName, setUserName] = useState<string | null>(initialUser?.full_name ?? null);
   const [userEmail, setUserEmail] = useState<string | null>(initialUser?.email ?? null);
   const [userRole, setUserRole] = useState<string | null>(initialRole ?? initialUser?.role ?? null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const isLoggedIn = Boolean(userName || userEmail);
+
+  // Avoid double headers: Never render the candidate navbar on /admin routes
+  if (pathname?.startsWith("/admin")) {
+    return null;
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -81,6 +89,7 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
 
   const handleLogout = async () => {
     try {
+      setLoggingOut(true);
       setCredits(null);
       setUserName(null);
       setUserEmail(null);
@@ -97,6 +106,8 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
       router.refresh();
     } catch (err) {
       console.warn("Logout failed:", err);
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -134,8 +145,8 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
             </span>
           </div>
 
-          {/* Desktop Nav Links */}
-          <div className="hidden md:flex items-center gap-1">
+          {/* Desktop Nav Links (collapsed below xl to prevent 2-line label wrapping) */}
+          <div className="hidden xl:flex items-center gap-1">
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -143,37 +154,37 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${isActive
                       ? "text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40"
                       : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/60"
                     }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  {link.label}
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{link.label}</span>
                 </Link>
               );
             })}
           </div>
 
           {/* Right Action Items */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden xl:flex items-center gap-2.5">
             {/* Credits pill (Only visible to authenticated users; loaded dynamically from server profile) */}
             {isLoggedIn && (
               <>
-                {(userRole === "admin" || userRole === "super_admin") ? (
+                {isAdminRole(userRole) ? (
                   <div
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 whitespace-nowrap"
                     title="Admin account: unlimited interview access"
                   >
-                    <Zap className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500" />
+                    <Zap className="w-3.5 h-3.5 text-indigo-500 fill-indigo-500 shrink-0" />
                     <span>Admin: unlimited</span>
                   </div>
                 ) : credits !== null ? (
                   <Link
                     href="/pricing"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors whitespace-nowrap"
                   >
-                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                    <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500 shrink-0" />
                     <span>{`${credits} ${credits === 1 ? "Credit" : "Credits"}`}</span>
                   </Link>
                 ) : null}
@@ -184,10 +195,11 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
 
             {userName || userEmail ? (
               <div className="flex items-center gap-1.5">
-                {(userRole === "admin" || userRole === "super_admin" || userRole === "support") && (
+                {isAdminRole(userRole) && (
                   <Link
                     href="/admin"
-                    className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors"
+                    prefetch={true}
+                    className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors whitespace-nowrap"
                     title="MockMate Admin Portal"
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -203,10 +215,16 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
                 </Link>
                 <button
                   onClick={handleLogout}
+                  disabled={loggingOut}
                   title="Log out"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                  aria-label="Log out"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors disabled:opacity-50"
                 >
-                  <LogOut className="w-4 h-4" />
+                  {loggingOut ? (
+                    <Spinner size="sm" className="text-rose-500" />
+                  ) : (
+                    <LogOut className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             ) : (
@@ -227,12 +245,12 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile menu button (shown below xl) */}
+          <div className="flex xl:hidden items-center gap-2">
             <ThemeToggle />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+              className="p-2 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
               aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -243,7 +261,7 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 pb-4 space-y-1">
+        <div className="xl:hidden border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 pt-2 pb-4 space-y-1">
           {navLinks.map((link) => {
             const Icon = link.icon;
             const isActive = pathname === link.href;
@@ -263,7 +281,7 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
             );
           })}
 
-          {(userRole === "admin" || userRole === "super_admin" || userRole === "support") && (
+          {isAdminRole(userRole) && (
             <Link
               href="/admin"
               onClick={() => setMobileMenuOpen(false)}
@@ -276,7 +294,7 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
 
           {isLoggedIn ? (
             <div className="pt-2 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              {(userRole === "admin" || userRole === "super_admin") ? (
+              {isAdminRole(userRole) ? (
                 <div className="flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300">
                   <Zap className="w-4 h-4 text-indigo-500 fill-indigo-500" />
                   <span>Admin: unlimited</span>
@@ -299,9 +317,11 @@ export function Navbar({ initialRole = null, initialUser = null }: NavbarProps =
                   setMobileMenuOpen(false);
                   handleLogout();
                 }}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300"
+                disabled={loggingOut}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-950/50 dark:text-rose-300 inline-flex items-center gap-1.5 disabled:opacity-50"
               >
-                Log Out ({userName || userEmail?.split("@")[0]})
+                {loggingOut && <Spinner size="sm" className="text-rose-600 dark:text-rose-300" />}
+                <span>Log Out ({userName || userEmail?.split("@")[0]})</span>
               </button>
             </div>
           ) : (

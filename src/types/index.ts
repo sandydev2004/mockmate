@@ -6,6 +6,18 @@ export type InterviewStatus = "active" | "completed" | "abandoned";
 export type SupportedLanguage = "python" | "cpp" | "java" | "javascript";
 export type ProctoringMode = "proctored" | "practice";
 
+export type TargetCompany =
+  | "TCS"
+  | "Infosys"
+  | "Wipro"
+  | "Cognizant"
+  | "Amazon"
+  | "Microsoft"
+  | "Swiggy"
+  | "CRED"
+  | "Zepto"
+  | "Razorpay";
+
 export type UserRole = "user" | "support" | "admin" | "super_admin";
 
 export interface Profile {
@@ -39,6 +51,7 @@ export interface InterviewRecord {
   user_id: string;
   role: Role;
   company_type: CompanyType;
+  target_company?: TargetCompany | string | null;
   difficulty: Difficulty;
   round: RoundType;
   resume_id?: string | null;
@@ -137,8 +150,11 @@ export interface CodeSubmissionRecord {
 export interface PaymentRecord {
   id: string;
   user_id: string;
+  order_id: string;
   razorpay_order_id: string;
+  payment_id?: string | null;
   razorpay_payment_id?: string | null;
+  pack?: string;
   amount: number;
   credits_added: number;
   status: "created" | "paid" | "failed";

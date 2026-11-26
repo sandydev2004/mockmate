@@ -1,29 +1,54 @@
+import { track } from "@vercel/analytics";
+
+export type FunnelEvent =
+  | "landing_view"
+  | "signup_completed"
+  | "first_interview_started"
+  | "payment_settled"
+  | "pricing_viewed"
+  | "checkout_started"
+  | "payment_success"
+  | "payment_failed";
+
 /**
- * Privacy-friendly, zero-PII client event tracker.
- * Only emits events if NEXT_PUBLIC_ENABLE_ANALYTICS === "true".
- * Never tracks personal identifiers, IP addresses, or keystrokes.
+ * Tracks critical student funnel conversion milestones.
  */
-export function trackEvent(name: string, props?: Record<string, string | number | boolean>) {
+export function trackFunnel(
+  event: FunnelEvent,
+  props?: Record<string, string | number | boolean>
+) {
+  trackEvent(event, props);
+}
+
+/**
+ * Privacy-friendly event tracker powered by Vercel Web Analytics.
+ * Never tracks personal identifiers, raw passwords, or keystrokes.
+ */
+export function trackEvent(
+  name: string,
+  props?: Record<string, string | number | boolean>
+) {
   if (typeof window === "undefined") return;
 
-  const enabled = process.env.NEXT_PUBLIC_ENABLE_ANALYTICS === "true";
-  if (!enabled) return;
-
   try {
-    const payload = {
-      event: name,
-      timestamp: new Date().toISOString(),
-      properties: props || {},
-    };
+    // Report to Vercel Analytics
+    track(name, props);
 
-    // Log to console in development
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[ANALYTICS] ${name}:`, props);
+      console.log(`[ANALYTICS: ${name}]`, props);
     }
 
-    // Dispatch custom DOM event for lightweight extensible observers
-    window.dispatchEvent(new CustomEvent("mockmate_analytics", { detail: payload }));
+    // Dispatch custom DOM event for light UI observers
+    window.dispatchEvent(
+      new CustomEvent("mockmate_analytics", {
+        detail: {
+          event: name,
+          timestamp: new Date().toISOString(),
+          properties: props || {},
+        },
+      })
+    );
   } catch {
-    // Fail silently without disrupting user experience
+    // Fail silently without disrupting UX
   }
 }

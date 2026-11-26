@@ -130,6 +130,7 @@ export async function POST(req: NextRequest) {
       evaluation = await evaluateCandidateAnswer({
         role: interview.role,
         companyType: interview.company_type,
+        targetCompany: interview.target_company,
         difficulty: interview.difficulty,
         round: interview.round,
         resumeText,
