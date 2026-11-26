@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next"
 import type { Metadata } from "next";
 import * as Sentry from "@sentry/nextjs";
 import Script from "next/script";
@@ -6,7 +7,6 @@ import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { getCurrentUser } from "@/lib/auth";
-import { Analytics } from "@vercel/analytics/react";
 import TopProgressBar from "@/components/loading/TopProgressBar";
 
 export function generateMetadata(): Metadata {

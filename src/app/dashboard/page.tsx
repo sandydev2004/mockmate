@@ -305,7 +305,9 @@ export default async function DashboardPage() {
                 Welcome, {candidateDisplayName}! No interviews taken yet.
               </h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-                You have {user.credits} free interview credit loaded! Configure your target role and company to begin your first session.
+                {isAdminRole(user.role)
+                  ? "Admin account: Unlimited interview credits active! Configure your target role and company to begin."
+                  : `You have ${user.credits} free interview credit loaded! Configure your target role and company to begin your first session.`}
               </p>
             </div>
             <Link
@@ -395,12 +397,14 @@ export default async function DashboardPage() {
               Payment History
             </h2>
           </div>
-          <Link
-            href="/pricing"
-            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Buy More Credits &rarr;
-          </Link>
+          {!isAdminRole(user.role) && (
+            <Link
+              href="/pricing"
+              className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline"
+            >
+              Buy More Credits &rarr;
+            </Link>
+          )}
         </div>
 
         {payments.length === 0 ? (

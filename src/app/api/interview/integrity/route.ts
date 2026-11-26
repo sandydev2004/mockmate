@@ -32,7 +32,7 @@ const logEventSchema = z.object({
     "window_blur",
     "paste_attempt",
   ]),
-  details: z.record(z.any()).optional(),
+  details: z.record(z.string(), z.any()).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -78,8 +78,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (currentInterview) {
+      const d = details as any;
       if (event_type === "strike_added") {
-        currentInterview.strikes = details?.strikes ?? details?.strike ?? (currentInterview.strikes || 0) + 1;
+        currentInterview.strikes = d?.strikes ?? d?.strike ?? (currentInterview.strikes || 0) + 1;
       }
       if (event_type === "duplicate_session") {
         // Duplicate session is explicitly a strike
@@ -93,8 +94,8 @@ export async function POST(req: NextRequest) {
           currentInterview.strikes = (currentInterview.strikes || 0) + 1;
         }
       }
-      if (event_type === "auto_submit" && details?.reason) {
-        currentInterview.auto_submit_reason = details.reason;
+      if (event_type === "auto_submit" && d?.reason) {
+        currentInterview.auto_submit_reason = String(d.reason);
       }
       appStore.saveInterview(currentInterview);
     }

@@ -47,7 +47,7 @@ const problemActionSchema = z.discriminatedUnion("action", [
       difficulty: z.enum(["easy", "medium", "hard"]),
       category: z.string().min(1),
       description: z.string().min(10),
-      starter_code: z.record(z.string()),
+      starter_code: z.record(z.string(), z.string()),
       test_cases: z.array(
         z.object({
           input: z.string(),
@@ -68,7 +68,7 @@ const problemActionSchema = z.discriminatedUnion("action", [
         difficulty: z.enum(["easy", "medium", "hard"]),
         category: z.string().min(1),
         description: z.string().min(1),
-        starter_code: z.record(z.string()),
+        starter_code: z.record(z.string(), z.string()),
         test_cases: z.array(
           z.object({
             input: z.string(),

@@ -7,9 +7,7 @@ const registerSchema = z.object({
   full_name: z.string().min(2, "Full name must be at least 2 characters").max(100),
   email: z.string().email("Please provide a valid email address").toLowerCase(),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  terms: z.literal(true, {
-    errorMap: () => ({ message: "You must accept the terms and conditions" }),
-  }),
+  terms: z.literal(true, "You must accept the terms and conditions"),
 });
 
 export async function POST(req: NextRequest) {

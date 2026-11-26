@@ -10,12 +10,14 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const headersList = headers();
+  const headersList = (await headers()) as any;
   const currentPath =
     headersList.get("x-mockmate-path") ||
     headersList.get("x-invoke-path") ||
     headersList.get("next-url") ||
     headersList.get("x-matched-path") ||
+    headersList.get("x-forwarded-uri") ||
+    headersList.get("x-original-uri") ||
     "";
   const referer = headersList.get("referer") || "";
   const isMfaPage =

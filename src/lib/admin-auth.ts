@@ -341,7 +341,7 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
 
   if (!user) {
     logAdminDenial("No active session / unauthenticated on admin page", { path: currentPath });
-    notFound();
+    redirect(`/login?redirect=${encodeURIComponent(currentPath || "/admin")}`);
   }
 
   if (!isAdminRole(user.role)) {
@@ -367,7 +367,7 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
   // Detect whether caller is on or targeting /admin/mfa across currentPath and all server headers
   let detectedPath = currentPath || "";
   try {
-    const headersList = headers();
+    const headersList = (await headers()) as any;
     detectedPath =
       currentPath ||
       headersList.get("x-mockmate-path") ||
@@ -394,7 +394,7 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
   // Non-production test header check
   if (process.env.NODE_ENV !== "production") {
     try {
-      const headersList = headers();
+      const headersList = (await headers()) as any;
       if (headersList.get("x-test-auth-role")) {
         const mfa = headersList.get("x-test-auth-mfa-enrolled") !== "false";
         const aal = headersList.get("x-test-auth-aal") || "aal2";
