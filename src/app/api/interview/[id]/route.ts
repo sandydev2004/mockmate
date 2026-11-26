@@ -7,10 +7,10 @@ import { isAdminRole } from "@/lib/admin-permissions";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const interviewId = params.id;
+    const { id: interviewId } = await params;
     const supabase = createAdminClient();
 
     // 1. Fetch interview
@@ -156,7 +156,7 @@ export async function GET(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -164,7 +164,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const interviewId = params.id;
+    const { id: interviewId } = await params;
     const supabase = createAdminClient();
 
     // Fetch interview to verify ownership

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense, use } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Sparkles,
@@ -1256,7 +1256,8 @@ I am ready for your critique and complexity evaluation.`;
   );
 }
 
-export default function InterviewRoomPage({ params }: { params: { id: string } }) {
+export default function InterviewRoomPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   return (
     <Suspense
       fallback={
@@ -1268,7 +1269,7 @@ export default function InterviewRoomPage({ params }: { params: { id: string } }
         </div>
       }
     >
-      <InterviewRoomContent interviewId={params.id} />
+      <InterviewRoomContent interviewId={id} />
     </Suspense>
   );
 }

@@ -466,13 +466,13 @@ export async function requireAdminPage(currentPath?: string): Promise<CurrentUse
  * - Security response headers
  */
 export function withAdminApi(
-  handler: (adminUser: CurrentUser, req: NextRequest) => Promise<NextResponse>,
+  handler: (adminUser: CurrentUser, req: NextRequest, ...args: any[]) => Promise<NextResponse>,
   options?: {
     requiredPermission?: AdminPermission;
     minRole?: AdminRole;
   }
 ) {
-  return async (req: NextRequest) => {
+  return async (req: NextRequest, ...args: any[]) => {
     const requestId = `req_${crypto.randomUUID().slice(0, 8)}`;
     const path = req.nextUrl?.pathname || req.url;
     const authResult = await verifyAdminApiDetailed(req);
@@ -526,7 +526,7 @@ export function withAdminApi(
     }
 
     try {
-      const response = await handler(adminUser, req);
+      const response = await handler(adminUser, req, ...args);
       response.headers.set("x-request-id", requestId);
       return applyAdminSecurityHeaders(response);
     } catch (err: any) {

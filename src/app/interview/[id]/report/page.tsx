@@ -33,9 +33,9 @@ import { ShareScoreCard } from "@/components/ShareScoreCard";
 export default async function FeedbackReportPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const interviewId = params.id;
+  const { id: interviewId } = await params;
   const supabase = createAdminClient();
 
   let interview: InterviewRecord | any = null;

@@ -10,12 +10,13 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 interface PageProps {
-  searchParams?: {
+  searchParams?: Promise<{
     redirect?: string;
-  };
+  }>;
 }
 
 export default async function AdminMfaPage({ searchParams }: PageProps) {
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
   const user = await getCurrentUser();
 
   if (!user) {
@@ -76,7 +77,7 @@ export default async function AdminMfaPage({ searchParams }: PageProps) {
     );
   }
 
-  const redirectPath = searchParams?.redirect || "/admin";
+  const redirectPath = resolvedSearchParams?.redirect || "/admin";
 
   return (
     <MfaErrorBoundary>

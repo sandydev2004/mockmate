@@ -21,10 +21,10 @@ import {
 } from "lucide-react";
 
 interface Props {
-  params: {
+  params: Promise<{
     company: string;
     slug: string;
-  };
+  }>;
 }
 
 export async function generateStaticParams() {
@@ -36,7 +36,8 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const page = getPracticePage(params.company, params.slug);
+  const { company, slug } = await params;
+  const page = getPracticePage(company, slug);
   if (!page) {
     return {
       title: "Practice Questions | MockMate",
@@ -77,8 +78,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default function PracticeQuestionPage({ params }: Props) {
-  const page = getPracticePage(params.company, params.slug);
+export default async function PracticeQuestionPage({ params }: Props) {
+  const { company, slug } = await params;
+  const page = getPracticePage(company, slug);
   if (!page) {
     notFound();
   }
